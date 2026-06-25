@@ -1,1 +1,18 @@
-.superpowers/sdd/
+# superpowers
+.superpowers/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
