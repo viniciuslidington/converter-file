@@ -53,8 +53,10 @@ def test_unsupported_format_prints_error(mocker, tmp_path, capsys):
     mocker.patch("converter_file.main.detect_group", side_effect=ValueError("Formato não suportado: .pdf"))
 
     with patch("sys.argv", ["convert-file", str(src)]):
-        main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
+    assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "Formato não suportado" in captured.err
 
@@ -68,7 +70,45 @@ def test_output_exists_prints_error(mocker, tmp_path, capsys):
     mocker.patch("converter_file.main.convert_media", side_effect=FileExistsError("já existe"))
 
     with patch("sys.argv", ["convert-file", str(src)]):
-        main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
+    assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "já existe" in captured.err
+
+
+def test_batch_mixed_groups_exits_with_error(mocker, tmp_path, capsys):
+    (tmp_path / "clip.mp4").touch()
+    (tmp_path / "photo.png").touch()
+
+    def fake_detect_group(path):
+        if path.endswith(".mp4"):
+            return "video"
+        if path.endswith(".png"):
+            return "image"
+        raise ValueError("Unsupported")
+
+    mocker.patch("converter_file.main.detect_group", side_effect=fake_detect_group)
+
+    with patch("sys.argv", ["convert-file", str(tmp_path)]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "grupos de formato diferentes" in captured.err
+
+
+def test_batch_no_supported_files_exits_with_error(mocker, tmp_path, capsys):
+    (tmp_path / "doc.pdf").touch()
+
+    mocker.patch("converter_file.main.detect_group", side_effect=ValueError("Unsupported"))
+
+    with patch("sys.argv", ["convert-file", str(tmp_path / "doc.pdf"), str(tmp_path / "doc.pdf")]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Nenhum arquivo suportado encontrado" in captured.err

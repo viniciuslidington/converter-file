@@ -10,12 +10,12 @@ from converter_file.convert_image import convert_image
 from converter_file.convert_media import convert_media
 
 
-def _convert_single(file_path: str, target_format: str | None = None) -> None:
+def _convert_single(file_path: str, target_format: str | None = None) -> bool:
     try:
         group = detect_group(file_path)
     except (ValueError, FileNotFoundError, RuntimeError) as e:
         print(f"Erro: {e}", file=sys.stderr)
-        return
+        return False
 
     if target_format is None:
         target_format = prompt_target_format(group)
@@ -26,8 +26,10 @@ def _convert_single(file_path: str, target_format: str | None = None) -> None:
         else:
             output = convert_media(file_path, target_format)
         print(f"Convertido: {output}")
+        return True
     except (FileExistsError, FileNotFoundError, RuntimeError) as e:
         print(f"Erro: {e}", file=sys.stderr)
+        return False
 
 
 def _collect_files(inputs: list[str]) -> list[str]:
@@ -57,24 +59,37 @@ def main() -> None:
 
     files = _collect_files(args.inputs)
 
+    any_error = False
+
     if len(files) == 1:
-        _convert_single(files[0])
-        return
+        if not _convert_single(files[0]):
+            any_error = True
+    else:
+        # Batch mode: collect unique groups from all valid files first
+        valid_groups: set[str] = set()
+        for f in files:
+            try:
+                valid_groups.add(detect_group(f))
+            except ValueError:
+                pass  # per-file error handled inside _convert_single
 
-    # Batch mode: pede formato uma vez, aplica a todos
-    first_valid_group = None
-    for f in files:
-        try:
-            first_valid_group = detect_group(f)
-            break
-        except ValueError:
-            continue
+        if not valid_groups:
+            print("Nenhum arquivo suportado encontrado.", file=sys.stderr)
+            any_error = True
+        elif len(valid_groups) > 1:
+            print(
+                "Erro: o lote contém arquivos de grupos de formato diferentes "
+                f"({', '.join(sorted(valid_groups))}). "
+                "Converta cada grupo separadamente.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            group = next(iter(valid_groups))
+            target_format = prompt_target_format(group)
+            for f in files:
+                if not _convert_single(f, target_format):
+                    any_error = True
 
-    if first_valid_group is None:
-        print("Nenhum arquivo suportado encontrado.", file=sys.stderr)
-        return
-
-    target_format = prompt_target_format(first_valid_group)
-
-    for f in files:
-        _convert_single(f, target_format)
+    if any_error:
+        sys.exit(1)

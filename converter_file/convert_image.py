@@ -1,10 +1,8 @@
-import os
 from pathlib import Path
 from PIL import Image
 
 _PILLOW_FORMAT: dict[str, str] = {
     "jpg": "JPEG",
-    "jpeg": "JPEG",
     "png": "PNG",
     "webp": "WEBP",
     "gif": "GIF",
