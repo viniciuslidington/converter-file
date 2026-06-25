@@ -56,7 +56,7 @@ def test_unsupported_format_prints_error(mocker, tmp_path, capsys):
         main()
 
     captured = capsys.readouterr()
-    assert "Formato não suportado" in captured.out or "Formato não suportado" in captured.err
+    assert "Formato não suportado" in captured.err
 
 
 def test_output_exists_prints_error(mocker, tmp_path, capsys):
@@ -71,4 +71,4 @@ def test_output_exists_prints_error(mocker, tmp_path, capsys):
         main()
 
     captured = capsys.readouterr()
-    assert "já existe" in captured.out or "já existe" in captured.err
+    assert "já existe" in captured.err

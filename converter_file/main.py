@@ -1,5 +1,6 @@
 # converter_file/main.py
 import argparse
+import glob
 import sys
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from converter_file.convert_media import convert_media
 def _convert_single(file_path: str, target_format: str | None = None) -> None:
     try:
         group = detect_group(file_path)
-    except ValueError as e:
+    except (ValueError, FileNotFoundError, RuntimeError) as e:
         print(f"Erro: {e}", file=sys.stderr)
         return
 
@@ -35,8 +36,14 @@ def _collect_files(inputs: list[str]) -> list[str]:
         p = Path(item)
         if p.is_dir():
             files.extend(str(f) for f in p.iterdir() if f.is_file())
-        else:
+        elif p.is_file():
             files.append(item)
+        else:
+            matches = glob.glob(item)
+            if matches:
+                files.extend(matches)
+            else:
+                files.append(item)
     return files
 
 
