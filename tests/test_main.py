@@ -10,7 +10,7 @@ def test_single_file_conversion(mocker, tmp_path):
 
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_file_native", return_value=out)
+    mocker.patch("converter_file.main._pick_save_file", return_value=out)
     mock_convert = mocker.patch("converter_file.main.convert_media", return_value=out)
 
     with patch("sys.argv", ["convert-file", str(src)]):
@@ -26,7 +26,7 @@ def test_single_image_conversion(mocker, tmp_path):
 
     mocker.patch("converter_file.main.detect_group", return_value="image")
     mocker.patch("converter_file.main.prompt_target_format", return_value="jpg")
-    mocker.patch("converter_file.main._pick_save_file_native", return_value=out)
+    mocker.patch("converter_file.main._pick_save_file", return_value=out)
     mock_convert = mocker.patch("converter_file.main.convert_image", return_value=out)
 
     with patch("sys.argv", ["convert-file", str(src)]):
@@ -41,7 +41,7 @@ def test_single_file_save_dialog_cancelled(mocker, tmp_path, capsys):
 
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_file_native", return_value=None)
+    mocker.patch("converter_file.main._pick_save_file", return_value=None)
 
     with patch("sys.argv", ["convert-file", str(src)]):
         with pytest.raises(SystemExit) as exc_info:
@@ -58,7 +58,7 @@ def test_batch_directory(mocker, tmp_path):
 
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_folder_native", return_value=save_folder)
+    mocker.patch("converter_file.main._pick_save_folder", return_value=save_folder)
     mock_convert = mocker.patch("converter_file.main.convert_media", return_value="out.avi")
 
     with patch("sys.argv", ["convert-file", str(tmp_path)]):
@@ -73,7 +73,7 @@ def test_batch_folder_dialog_cancelled(mocker, tmp_path, capsys):
 
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_folder_native", return_value=None)
+    mocker.patch("converter_file.main._pick_save_folder", return_value=None)
 
     with patch("sys.argv", ["convert-file", str(tmp_path)]):
         with pytest.raises(SystemExit) as exc_info:
@@ -104,7 +104,7 @@ def test_output_exists_prints_error(mocker, tmp_path, capsys):
 
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_file_native", return_value=out)
+    mocker.patch("converter_file.main._pick_save_file", return_value=out)
     mocker.patch("converter_file.main.convert_media", side_effect=FileExistsError("já existe"))
 
     with patch("sys.argv", ["convert-file", str(src)]):
@@ -154,10 +154,10 @@ def test_no_args_opens_native_picker(mocker, tmp_path):
     src.touch()
     out = str(tmp_path / "clip.avi")
 
-    mocker.patch("converter_file.main._pick_files_native", return_value=[str(src)])
+    mocker.patch("converter_file.main._pick_files", return_value=[str(src)])
     mocker.patch("converter_file.main.detect_group", return_value="video")
     mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
-    mocker.patch("converter_file.main._pick_save_file_native", return_value=out)
+    mocker.patch("converter_file.main._pick_save_file", return_value=out)
     mock_convert = mocker.patch("converter_file.main.convert_media", return_value=out)
 
     with patch("sys.argv", ["convert-file"]):
@@ -167,7 +167,7 @@ def test_no_args_opens_native_picker(mocker, tmp_path):
 
 
 def test_no_args_picker_cancelled_exits(mocker, capsys):
-    mocker.patch("converter_file.main._pick_files_native", return_value=[])
+    mocker.patch("converter_file.main._pick_files", return_value=[])
 
     with patch("sys.argv", ["convert-file"]):
         with pytest.raises(SystemExit) as exc_info:

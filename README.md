@@ -5,21 +5,27 @@ CLI em Python para converter arquivos de vídeo, áudio e imagem para formatos a
 ## Requisitos
 
 - Python 3.11+
-- [ffmpeg](https://ffmpeg.org/download.html) instalado e disponível no PATH (para vídeo e áudio)
+- ffmpeg (para conversão de vídeo e áudio)
 
 ## Instalação
 
-**1. Instalar o ffmpeg** (necessário para vídeo e áudio):
+Clone o repositório e execute o script correspondente ao seu sistema:
 
+**macOS / Linux**
 ```bash
-brew install ffmpeg
+git clone https://github.com/viniciuslidington/converter-file.git
+cd converter-file
+./install.sh
 ```
 
-**2. Instalar o pacote:**
-
-```bash
-pip install -e .
+**Windows** (PowerShell como Administrador)
+```powershell
+git clone https://github.com/viniciuslidington/converter-file.git
+cd converter-file
+.\install.ps1
 ```
+
+Os scripts instalam automaticamente o Python 3.11, o ffmpeg e o pacote.
 
 ## Uso
 

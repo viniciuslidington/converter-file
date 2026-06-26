@@ -1,5 +1,6 @@
 import argparse
 import glob
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -9,8 +10,32 @@ from converter_file.menu import prompt_target_format
 from converter_file.convert_image import convert_image
 from converter_file.convert_media import convert_media
 
+_IS_MACOS = platform.system() == "Darwin"
 
-def _pick_files_native() -> list[str]:
+
+# ── File / folder dialogs ────────────────────────────────────────────────────
+
+def _pick_files() -> list[str]:
+    if _IS_MACOS:
+        return _osascript_pick_files()
+    return _tkinter_pick_files()
+
+
+def _pick_save_file(suggested_name: str) -> str | None:
+    if _IS_MACOS:
+        return _osascript_save_file(suggested_name)
+    return _tkinter_save_file(suggested_name)
+
+
+def _pick_save_folder() -> str | None:
+    if _IS_MACOS:
+        return _osascript_save_folder()
+    return _tkinter_save_folder()
+
+
+# ── macOS (osascript) ────────────────────────────────────────────────────────
+
+def _osascript_pick_files() -> list[str]:
     script = """
 set theFiles to choose file ¬
     with prompt "Escolha arquivo(s) para converter:" ¬
@@ -27,7 +52,7 @@ return output
     return [p for p in result.stdout.strip().splitlines() if p]
 
 
-def _pick_save_file_native(suggested_name: str) -> str | None:
+def _osascript_save_file(suggested_name: str) -> str | None:
     script = f'POSIX path of (choose file name with prompt "Salvar como:" default name "{suggested_name}")'
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
@@ -35,13 +60,59 @@ def _pick_save_file_native(suggested_name: str) -> str | None:
     return result.stdout.strip() or None
 
 
-def _pick_save_folder_native() -> str | None:
+def _osascript_save_folder() -> str | None:
     script = 'POSIX path of (choose folder with prompt "Escolha a pasta de destino:")'
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
         return None
     return result.stdout.strip() or None
 
+
+# ── Linux / Windows (tkinter) ────────────────────────────────────────────────
+
+def _tk_root():
+    try:
+        import tkinter as tk
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.attributes("-topmost", True)
+        return root
+    except ImportError:
+        print(
+            "Erro: tkinter não encontrado.\n"
+            "  Linux: sudo apt install python3-tk  (ou dnf / pacman equivalente)\n"
+            "  Windows: reinstale o Python marcando a opção tcl/tk.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def _tkinter_pick_files() -> list[str]:
+    from tkinter import filedialog
+    root = _tk_root()
+    files = filedialog.askopenfilenames(title="Escolha arquivo(s) para converter:")
+    root.destroy()
+    return list(files)
+
+
+def _tkinter_save_file(suggested_name: str) -> str | None:
+    from tkinter import filedialog
+    root = _tk_root()
+    path = filedialog.asksaveasfilename(title="Salvar como:", initialfile=suggested_name)
+    root.destroy()
+    return path or None
+
+
+def _tkinter_save_folder() -> str | None:
+    from tkinter import filedialog
+    root = _tk_root()
+    folder = filedialog.askdirectory(title="Escolha a pasta de destino:")
+    root.destroy()
+    return folder or None
+
+
+# ── Conversion ───────────────────────────────────────────────────────────────
 
 def _convert_single(file_path: str, target_format: str, output_path: str | None = None) -> bool:
     try:
@@ -79,6 +150,8 @@ def _collect_files(inputs: list[str]) -> list[str]:
     return files
 
 
+# ── Entry point ──────────────────────────────────────────────────────────────
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="convert-file",
@@ -91,7 +164,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.inputs:
-        picked = _pick_files_native()
+        picked = _pick_files()
         if not picked:
             print("Nenhum arquivo selecionado.", file=sys.stderr)
             sys.exit(1)
@@ -112,7 +185,7 @@ def main() -> None:
         target_format = prompt_target_format(group)
 
         suggested = Path(file).stem + "." + target_format
-        output_path = _pick_save_file_native(suggested)
+        output_path = _pick_save_file(suggested)
         if output_path is None:
             print("Destino não selecionado.", file=sys.stderr)
             sys.exit(1)
@@ -121,7 +194,6 @@ def main() -> None:
             any_error = True
 
     else:
-        # Batch mode: collect unique groups from all valid files first
         valid_groups: set[str] = set()
         for f in files:
             try:
@@ -144,7 +216,7 @@ def main() -> None:
             group = next(iter(valid_groups))
             target_format = prompt_target_format(group)
 
-            save_folder = _pick_save_folder_native()
+            save_folder = _pick_save_folder()
             if save_folder is None:
                 print("Destino não selecionado.", file=sys.stderr)
                 sys.exit(1)
