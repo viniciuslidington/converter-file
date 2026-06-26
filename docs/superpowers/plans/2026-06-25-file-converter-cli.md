@@ -46,12 +46,14 @@ converter_file/
 ### Task 1: Scaffold do projeto
 
 **Files:**
+
 - Create: `pyproject.toml`
 - Create: `requirements-dev.txt`
 - Create: `converter_file/__init__.py`
 - Create: `tests/__init__.py`
 
 **Interfaces:**
+
 - Produces: pacote instalável `converter_file`, comando `convert-file` no PATH
 
 - [ ] **Step 1: Criar pyproject.toml**
@@ -109,10 +111,12 @@ git commit -m "chore: project scaffold"
 ### Task 2: Detecção de Format Group (`detect.py`)
 
 **Files:**
+
 - Create: `converter_file/detect.py`
 - Test: `tests/test_detect.py`
 
 **Interfaces:**
+
 - Produces:
   - `detect_group(path: str) -> str` — retorna `"video"`, `"audio"`, ou `"image"`; levanta `ValueError` se extensão não suportada
   - `SUPPORTED_FORMATS: dict[str, list[str]]` — mapa `{group: [extensões sem ponto]}`
@@ -200,10 +204,12 @@ git commit -m "feat: format group detection"
 ### Task 3: Menu interativo (`menu.py`)
 
 **Files:**
+
 - Create: `converter_file/menu.py`
 - Test: `tests/test_menu.py`
 
 **Interfaces:**
+
 - Consumes: `SUPPORTED_FORMATS` de `converter_file.detect`
 - Produces:
   - `prompt_target_format(group: str) -> str` — exibe menu numerado, lê `input()`, retorna extensão escolhida (ex.: `"mp4"`); levanta `ValueError` para grupo inválido
@@ -297,10 +303,12 @@ git commit -m "feat: interactive format menu"
 ### Task 4: Conversão de imagens (`convert_image.py`)
 
 **Files:**
+
 - Create: `converter_file/convert_image.py`
 - Test: `tests/test_convert_image.py`
 
 **Interfaces:**
+
 - Produces:
   - `convert_image(input_path: str, target_format: str) -> str` — converte e salva o output; retorna caminho do arquivo gerado; levanta `FileExistsError` se output já existe; levanta `FileNotFoundError` se input não existe
 
@@ -416,10 +424,12 @@ git commit -m "feat: image conversion via Pillow"
 ### Task 5: Conversão de vídeo/áudio (`convert_media.py`)
 
 **Files:**
+
 - Create: `converter_file/convert_media.py`
 - Test: `tests/test_convert_media.py`
 
 **Interfaces:**
+
 - Produces:
   - `convert_media(input_path: str, target_format: str) -> str` — chama ffmpeg via subprocess; retorna caminho do output; levanta `FileExistsError` se output já existe; levanta `FileNotFoundError` se input não existe; levanta `RuntimeError` com stderr do ffmpeg em caso de falha
 
@@ -532,10 +542,12 @@ git commit -m "feat: video/audio conversion via ffmpeg"
 ### Task 6: Orquestração e CLI principal (`main.py`)
 
 **Files:**
+
 - Create: `converter_file/main.py`
 - Test: `tests/test_main.py`
 
 **Interfaces:**
+
 - Consumes:
   - `detect_group(path: str) -> str` de `converter_file.detect`
   - `prompt_target_format(group: str) -> str` de `converter_file.menu`
@@ -547,6 +559,7 @@ git commit -m "feat: video/audio conversion via ffmpeg"
   - Flag `--batch` (ou passagem de diretório) para Batch Mode
 
 **CLI usage:**
+
 ```
 convert-file arquivo.mp4
 convert-file imagens/*.png
@@ -776,15 +789,15 @@ git tag v0.1.0
 
 **Spec coverage:**
 
-| Requisito (CONTEXT.md) | Task que implementa |
-|---|---|
-| Input File detectado pela extensão | Task 2 (`detect.py`) |
-| Menu interativo para Target Format | Task 3 (`menu.py`) |
-| Output na mesma pasta, mesmo nome, nova extensão | Tasks 4 e 5 |
-| Engine ffmpeg para vídeo/áudio | Task 5 (`convert_media.py`) |
-| Engine Pillow para imagens | Task 4 (`convert_image.py`) |
-| Batch Mode (glob/pasta) | Task 6 (`main.py`) |
-| Todos os formatos do CONTEXT.md | Tasks 2, 3, 4, 5 |
+| Requisito (CONTEXT.md)                            | Task que implementa           |
+| ------------------------------------------------- | ----------------------------- |
+| Input File detectado pela extensão               | Task 2 (`detect.py`)        |
+| Menu interativo para Target Format                | Task 3 (`menu.py`)          |
+| Output na mesma pasta, mesmo nome, nova extensão | Tasks 4 e 5                   |
+| Engine ffmpeg para vídeo/áudio                  | Task 5 (`convert_media.py`) |
+| Engine Pillow para imagens                        | Task 4 (`convert_image.py`) |
+| Batch Mode (glob/pasta)                           | Task 6 (`main.py`)          |
+| Todos os formatos do CONTEXT.md                   | Tasks 2, 3, 4, 5              |
 
 Nenhuma lacuna identificada.
 
