@@ -1,4 +1,3 @@
-# converter_file/main.py
 import argparse
 import glob
 import subprocess
@@ -9,28 +8,6 @@ from converter_file.detect import detect_group
 from converter_file.menu import prompt_target_format
 from converter_file.convert_image import convert_image
 from converter_file.convert_media import convert_media
-
-
-def _convert_single(file_path: str, target_format: str | None = None) -> bool:
-    try:
-        group = detect_group(file_path)
-    except (ValueError, FileNotFoundError, RuntimeError) as e:
-        print(f"Erro: {e}", file=sys.stderr)
-        return False
-
-    if target_format is None:
-        target_format = prompt_target_format(group)
-
-    try:
-        if group == "image":
-            output = convert_image(file_path, target_format)
-        else:
-            output = convert_media(file_path, target_format)
-        print(f"Convertido: {output}")
-        return True
-    except (FileExistsError, FileNotFoundError, RuntimeError) as e:
-        print(f"Erro: {e}", file=sys.stderr)
-        return False
 
 
 def _pick_files_native() -> list[str]:
@@ -48,6 +25,41 @@ return output
     if result.returncode != 0:
         return []
     return [p for p in result.stdout.strip().splitlines() if p]
+
+
+def _pick_save_file_native(suggested_name: str) -> str | None:
+    script = f'POSIX path of (choose file name with prompt "Salvar como:" default name "{suggested_name}")'
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _pick_save_folder_native() -> str | None:
+    script = 'POSIX path of (choose folder with prompt "Escolha a pasta de destino:")'
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _convert_single(file_path: str, target_format: str, output_path: str | None = None) -> bool:
+    try:
+        group = detect_group(file_path)
+    except (ValueError, FileNotFoundError, RuntimeError) as e:
+        print(f"Erro: {e}", file=sys.stderr)
+        return False
+
+    try:
+        if group == "image":
+            output = convert_image(file_path, target_format, output_path)
+        else:
+            output = convert_media(file_path, target_format, output_path)
+        print(f"Convertido: {output}")
+        return True
+    except (FileExistsError, FileNotFoundError, RuntimeError) as e:
+        print(f"Erro: {e}", file=sys.stderr)
+        return False
 
 
 def _collect_files(inputs: list[str]) -> list[str]:
@@ -72,7 +84,10 @@ def main() -> None:
         prog="convert-file",
         description="Converte arquivos de vídeo, áudio e imagem.",
     )
-    parser.add_argument("inputs", nargs="*", metavar="arquivo", help="Arquivo(s) ou pasta para converter (omita para abrir seletor de arquivo)")
+    parser.add_argument(
+        "inputs", nargs="*", metavar="arquivo",
+        help="Arquivo(s) ou pasta para converter (omita para abrir seletor de arquivo)",
+    )
     args = parser.parse_args()
 
     if not args.inputs:
@@ -87,8 +102,24 @@ def main() -> None:
     any_error = False
 
     if len(files) == 1:
-        if not _convert_single(files[0]):
+        file = files[0]
+        try:
+            group = detect_group(file)
+        except (ValueError, FileNotFoundError, RuntimeError) as e:
+            print(f"Erro: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        target_format = prompt_target_format(group)
+
+        suggested = Path(file).stem + "." + target_format
+        output_path = _pick_save_file_native(suggested)
+        if output_path is None:
+            print("Destino não selecionado.", file=sys.stderr)
+            sys.exit(1)
+
+        if not _convert_single(file, target_format, output_path):
             any_error = True
+
     else:
         # Batch mode: collect unique groups from all valid files first
         valid_groups: set[str] = set()
@@ -96,7 +127,7 @@ def main() -> None:
             try:
                 valid_groups.add(detect_group(f))
             except ValueError:
-                pass  # per-file error handled inside _convert_single
+                pass
 
         if not valid_groups:
             print("Nenhum arquivo suportado encontrado.", file=sys.stderr)
@@ -112,8 +143,15 @@ def main() -> None:
         else:
             group = next(iter(valid_groups))
             target_format = prompt_target_format(group)
+
+            save_folder = _pick_save_folder_native()
+            if save_folder is None:
+                print("Destino não selecionado.", file=sys.stderr)
+                sys.exit(1)
+
             for f in files:
-                if not _convert_single(f, target_format):
+                out = str(Path(save_folder) / (Path(f).stem + f".{target_format}"))
+                if not _convert_single(f, target_format, out):
                     any_error = True
 
     if any_error:
