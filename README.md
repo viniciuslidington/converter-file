@@ -23,43 +23,35 @@ pip install -e .
 
 ## Uso
 
-### Seletor de arquivo (sem argumentos)
+### Arquivo único
 
 ```bash
-convert-file
+convert-file              # abre seletor de arquivo nativo
+convert-file video.mp4    # ou passe o caminho direto
 ```
 
-Abre o seletor de arquivo nativo do macOS. Selecione um ou mais arquivos e clique em **Escolher**.
+Fluxo completo:
 
-### Via terminal
-
-```bash
-convert-file arquivo.mp4
-```
-
-Após detectar o tipo do arquivo, um menu interativo exibe os formatos disponíveis:
-
-```
-Formatos disponíveis para video:
-  1. .mov
-  2. .mp4
-  3. .avi
-  4. .mkv
-  5. .webm
-Escolha o número do formato de destino:
-```
-
-O arquivo convertido é salvo na mesma pasta com o mesmo nome e a nova extensão.
+1. Seletor de arquivo nativo do macOS (se sem argumento)
+2. Menu no terminal para escolher o formato de destino
+3. Seletor **"Salvar como"** nativo — escolha o nome e a pasta de destino
+4. Arquivo convertido e salvo no local escolhido
 
 ### Modo batch
 
-Passe uma pasta, múltiplos arquivos ou um glob — o formato é escolhido uma única vez e aplicado a todos:
+Passe uma pasta, múltiplos arquivos ou um glob:
 
 ```bash
 convert-file pasta/
 convert-file clip1.mp4 clip2.mp4
 convert-file "imagens/*.png"
 ```
+
+Fluxo batch:
+
+1. Formato de destino escolhido uma única vez no terminal
+2. Seletor de **pasta de destino** nativo — todos os arquivos convertidos são salvos lá
+3. Nomes originais são preservados, apenas a extensão muda
 
 Todos os arquivos do lote devem ser do mesmo tipo (vídeo, áudio ou imagem).
 
