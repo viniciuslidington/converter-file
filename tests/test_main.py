@@ -112,3 +112,29 @@ def test_batch_no_supported_files_exits_with_error(mocker, tmp_path, capsys):
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "Nenhum arquivo suportado encontrado" in captured.err
+
+
+def test_no_args_opens_native_picker(mocker, tmp_path):
+    src = tmp_path / "clip.mp4"
+    src.touch()
+
+    mocker.patch("converter_file.main._pick_files_native", return_value=[str(src)])
+    mocker.patch("converter_file.main.detect_group", return_value="video")
+    mocker.patch("converter_file.main.prompt_target_format", return_value="avi")
+    mock_convert = mocker.patch("converter_file.main.convert_media", return_value=str(tmp_path / "clip.avi"))
+
+    with patch("sys.argv", ["convert-file"]):
+        main()
+
+    mock_convert.assert_called_once_with(str(src), "avi")
+
+
+def test_no_args_picker_cancelled_exits(mocker, capsys):
+    mocker.patch("converter_file.main._pick_files_native", return_value=[])
+
+    with patch("sys.argv", ["convert-file"]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+    assert exc_info.value.code == 1
+    assert "Nenhum arquivo selecionado" in capsys.readouterr().err

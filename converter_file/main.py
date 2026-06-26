@@ -1,6 +1,7 @@
 # converter_file/main.py
 import argparse
 import glob
+import subprocess
 import sys
 from pathlib import Path
 
@@ -32,6 +33,23 @@ def _convert_single(file_path: str, target_format: str | None = None) -> bool:
         return False
 
 
+def _pick_files_native() -> list[str]:
+    script = """
+set theFiles to choose file ¬
+    with prompt "Escolha arquivo(s) para converter:" ¬
+    with multiple selections allowed
+set output to ""
+repeat with f in theFiles
+    set output to output & POSIX path of f & linefeed
+end repeat
+return output
+"""
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return [p for p in result.stdout.strip().splitlines() if p]
+
+
 def _collect_files(inputs: list[str]) -> list[str]:
     files = []
     for item in inputs:
@@ -54,10 +72,17 @@ def main() -> None:
         prog="convert-file",
         description="Converte arquivos de vídeo, áudio e imagem.",
     )
-    parser.add_argument("inputs", nargs="+", metavar="arquivo", help="Arquivo(s) ou pasta para converter")
+    parser.add_argument("inputs", nargs="*", metavar="arquivo", help="Arquivo(s) ou pasta para converter (omita para abrir seletor de arquivo)")
     args = parser.parse_args()
 
-    files = _collect_files(args.inputs)
+    if not args.inputs:
+        picked = _pick_files_native()
+        if not picked:
+            print("Nenhum arquivo selecionado.", file=sys.stderr)
+            sys.exit(1)
+        files = picked
+    else:
+        files = _collect_files(args.inputs)
 
     any_error = False
 
