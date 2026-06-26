@@ -9,6 +9,14 @@ CLI em Python para converter arquivos de vídeo, áudio e imagem para formatos a
 
 ## Instalação
 
+**1. Instalar o ffmpeg** (necessário para vídeo e áudio):
+
+```bash
+brew install ffmpeg
+```
+
+**2. Instalar o pacote:**
+
 ```bash
 pip install -e .
 ```
