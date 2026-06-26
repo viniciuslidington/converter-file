@@ -15,6 +15,16 @@ pip install -e .
 
 ## Uso
 
+### Seletor de arquivo (sem argumentos)
+
+```bash
+convert-file
+```
+
+Abre o seletor de arquivo nativo do macOS. Selecione um ou mais arquivos e clique em **Escolher**.
+
+### Via terminal
+
 ```bash
 convert-file arquivo.mp4
 ```
@@ -35,10 +45,11 @@ O arquivo convertido é salvo na mesma pasta com o mesmo nome e a nova extensão
 
 ### Modo batch
 
-Passe uma pasta ou glob — o formato é escolhido uma única vez e aplicado a todos os arquivos:
+Passe uma pasta, múltiplos arquivos ou um glob — o formato é escolhido uma única vez e aplicado a todos:
 
 ```bash
 convert-file pasta/
+convert-file clip1.mp4 clip2.mp4
 convert-file "imagens/*.png"
 ```
 
@@ -46,10 +57,10 @@ Todos os arquivos do lote devem ser do mesmo tipo (vídeo, áudio ou imagem).
 
 ## Formatos suportados
 
-| Tipo   | Formatos                          |
-|--------|-----------------------------------|
-| Vídeo  | `.mov` `.mp4` `.avi` `.mkv` `.webm` |
-| Áudio  | `.mp3` `.wav` `.aac` `.flac` `.ogg` |
+| Tipo   | Formatos                                                |
+| ------ | ------------------------------------------------------- |
+| Vídeo | `.mov` `.mp4` `.avi` `.mkv` `.webm`           |
+| Áudio | `.mp3` `.wav` `.aac` `.flac` `.ogg`           |
 | Imagem | `.jpg` `.png` `.webp` `.gif` `.bmp` `.tiff` |
 
 ## Desenvolvimento
