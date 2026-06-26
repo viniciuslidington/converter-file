@@ -2,7 +2,6 @@
 
 CLI em Python para converter arquivos de vídeo, áudio e imagem para formatos alternativos.
 
-![Demo](docs/demo.gif)
 
 ## Requisitos
 
