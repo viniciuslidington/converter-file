@@ -6,7 +6,13 @@ from converter_file.menu import prompt_target_format
 def test_valid_video_choice(capsys):
     with patch("builtins.input", return_value="1"):
         result = prompt_target_format("video")
-    assert result in ["mov", "mp4", "avi", "mkv", "webm"]
+    assert result in ["mov", "mp4", "avi", "mkv", "webm", "mp3", "wav", "aac", "flac", "ogg"]
+
+
+def test_video_menu_accepts_audio_target(capsys):
+    with patch("builtins.input", return_value="6"):
+        result = prompt_target_format("video")
+    assert result == "mp3"
 
 
 def test_valid_image_choice(capsys):

@@ -4,6 +4,11 @@ SUPPORTED_FORMATS: dict[str, list[str]] = {
     "image": ["jpg", "png", "webp", "gif", "bmp", "tiff"],
 }
 
+TARGET_FORMATS: dict[str, list[str]] = {
+    **SUPPORTED_FORMATS,
+    "video": SUPPORTED_FORMATS["video"] + SUPPORTED_FORMATS["audio"],
+}
+
 _EXT_TO_GROUP: dict[str, str] = {
     ext: group
     for group, exts in SUPPORTED_FORMATS.items()

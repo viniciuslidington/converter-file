@@ -1,6 +1,8 @@
 import subprocess
 from pathlib import Path
 
+from converter_file.detect import SUPPORTED_FORMATS
+
 
 def convert_media(input_path: str, target_format: str, output_path: str | None = None) -> str:
     src = Path(input_path)
@@ -11,8 +13,13 @@ def convert_media(input_path: str, target_format: str, output_path: str | None =
     if dst.exists():
         raise FileExistsError(f"Arquivo de saída já existe: {dst}")
 
+    command = ["ffmpeg", "-i", str(src)]
+    if target_format in SUPPORTED_FORMATS["audio"]:
+        command.append("-vn")
+    command.append(str(dst))
+
     result = subprocess.run(
-        ["ffmpeg", "-i", str(src), str(dst)],
+        command,
         capture_output=True,
         text=True,
     )

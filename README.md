@@ -70,6 +70,9 @@ Todos os arquivos do lote devem ser do mesmo tipo (vídeo, áudio ou imagem).
 | Áudio | `.mp3` `.wav` `.aac` `.flac` `.ogg`           |
 | Imagem | `.jpg` `.png` `.webp` `.gif` `.bmp` `.tiff` |
 
+Ao converter um vídeo, o menu também oferece formatos de áudio (`.mp3`,
+`.wav`, `.aac`, `.flac`, `.ogg`) para extrair somente a trilha sonora.
+
 ## Desenvolvimento
 
 ```bash

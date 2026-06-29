@@ -1,11 +1,11 @@
-from converter_file.detect import SUPPORTED_FORMATS
+from converter_file.detect import TARGET_FORMATS
 
 
 def prompt_target_format(group: str) -> str:
-    if group not in SUPPORTED_FORMATS:
+    if group not in TARGET_FORMATS:
         raise ValueError(f"Grupo inválido: {group}")
 
-    options = SUPPORTED_FORMATS[group]
+    options = TARGET_FORMATS[group]
 
     while True:
         print(f"\nFormatos disponíveis para {group}:")
