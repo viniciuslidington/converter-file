@@ -1,6 +1,25 @@
 import pytest
 from unittest.mock import patch
-from converter_file.main import main
+from converter_file.main import _convert_single, main
+from converter_file.menu import ConversionCancelled
+
+
+def test_convert_single_prints_output_path(mocker, tmp_path, capsys):
+    src = tmp_path / "clip.mp4"
+    src.touch()
+    out = tmp_path / "clip.avi"
+
+    def fake_convert_media(file_path, target_format, output_path=None):
+        out.write_bytes(b"x" * 1536)
+        return str(out)
+
+    mocker.patch("converter_file.main.detect_group", return_value="video")
+    mocker.patch("converter_file.main.convert_media", side_effect=fake_convert_media)
+
+    assert _convert_single(str(src), "avi", str(out)) is True
+
+    captured = capsys.readouterr()
+    assert captured.out == f"Convertido: {out}\n"
 
 
 def test_single_file_conversion(mocker, tmp_path):
@@ -51,6 +70,23 @@ def test_single_file_save_dialog_cancelled(mocker, tmp_path, capsys):
     assert "Destino não selecionado" in capsys.readouterr().err
 
 
+def test_single_file_format_selection_cancelled(mocker, tmp_path, capsys):
+    src = tmp_path / "clip.mp4"
+    src.touch()
+
+    mocker.patch("converter_file.main.detect_group", return_value="video")
+    mocker.patch("converter_file.main.prompt_target_format", side_effect=ConversionCancelled)
+    pick_save = mocker.patch("converter_file.main._pick_save_file")
+
+    with patch("sys.argv", ["convert-file", str(src)]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+    assert exc_info.value.code == 0
+    assert "Conversão cancelada" in capsys.readouterr().out
+    pick_save.assert_not_called()
+
+
 def test_batch_directory(mocker, tmp_path):
     (tmp_path / "a.mp4").touch()
     (tmp_path / "b.mp4").touch()
@@ -81,6 +117,23 @@ def test_batch_folder_dialog_cancelled(mocker, tmp_path, capsys):
 
     assert exc_info.value.code == 1
     assert "Destino não selecionado" in capsys.readouterr().err
+
+
+def test_batch_format_selection_cancelled(mocker, tmp_path, capsys):
+    (tmp_path / "a.mp4").touch()
+    (tmp_path / "b.mp4").touch()
+
+    mocker.patch("converter_file.main.detect_group", return_value="video")
+    mocker.patch("converter_file.main.prompt_target_format", side_effect=ConversionCancelled)
+    pick_folder = mocker.patch("converter_file.main._pick_save_folder")
+
+    with patch("sys.argv", ["convert-file", str(tmp_path)]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+    assert exc_info.value.code == 0
+    assert "Conversão cancelada" in capsys.readouterr().out
+    pick_folder.assert_not_called()
 
 
 def test_unsupported_format_prints_error(mocker, tmp_path, capsys):

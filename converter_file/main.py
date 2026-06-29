@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from converter_file.detect import detect_group
-from converter_file.menu import prompt_target_format
+from converter_file.menu import ConversionCancelled, prompt_target_format
 from converter_file.convert_image import convert_image
 from converter_file.convert_media import convert_media
 
@@ -182,7 +182,11 @@ def main() -> None:
             print(f"Erro: {e}", file=sys.stderr)
             sys.exit(1)
 
-        target_format = prompt_target_format(group)
+        try:
+            target_format = prompt_target_format(group, [file])
+        except ConversionCancelled:
+            print("Conversão cancelada.")
+            sys.exit(0)
 
         suggested = Path(file).stem + "." + target_format
         output_path = _pick_save_file(suggested)
@@ -214,7 +218,11 @@ def main() -> None:
             sys.exit(1)
         else:
             group = next(iter(valid_groups))
-            target_format = prompt_target_format(group)
+            try:
+                target_format = prompt_target_format(group, files)
+            except ConversionCancelled:
+                print("Conversão cancelada.")
+                sys.exit(0)
 
             save_folder = _pick_save_folder()
             if save_folder is None:

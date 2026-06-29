@@ -40,7 +40,7 @@ convert-file video.mp4    # ou passe o caminho direto
 Fluxo completo:
 
 1. Seletor de arquivo nativo do macOS (se sem argumento)
-2. Menu no terminal para escolher o formato de destino
+2. Menu no terminal para escolher o formato de destino, vendo o tamanho estimado de cada opção
 3. Seletor **"Salvar como"** nativo — escolha o nome e a pasta de destino
 4. Arquivo convertido e salvo no local escolhido
 
@@ -56,7 +56,7 @@ convert-file "imagens/*.png"
 
 Fluxo batch:
 
-1. Formato de destino escolhido uma única vez no terminal
+1. Formato de destino escolhido uma única vez no terminal, vendo o tamanho total estimado do lote
 2. Seletor de **pasta de destino** nativo — todos os arquivos convertidos são salvos lá
 3. Nomes originais são preservados, apenas a extensão muda
 

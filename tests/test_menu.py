@@ -1,12 +1,66 @@
 import pytest
 from unittest.mock import patch
-from converter_file.menu import prompt_target_format
+from converter_file.menu import ConversionCancelled, prompt_target_format
 
 
 def test_valid_video_choice(capsys):
     with patch("builtins.input", return_value="1"):
         result = prompt_target_format("video")
     assert result in ["mov", "mp4", "avi", "mkv", "webm", "mp3", "wav", "aac", "flac", "ogg"]
+
+
+def test_number_menu_shows_estimated_size(mocker, capsys):
+    mocker.patch(
+        "converter_file.menu.estimate_output_size_labels",
+        return_value={"mp3": "~2.3 MB"},
+    )
+
+    with patch("builtins.input", return_value="1"):
+        prompt_target_format("audio", ["song.wav"])
+
+    assert ".mp3 (~2.3 MB estimado)" in capsys.readouterr().out
+
+
+def test_interactive_menu_uses_questionary(mocker):
+    mocker.patch("converter_file.menu._supports_arrow_menu", return_value=True)
+    mocker.patch("converter_file.menu._prompt_with_questionary", return_value="wav")
+
+    result = prompt_target_format("audio")
+
+    assert result == "wav"
+
+
+def test_interactive_menu_falls_back_to_manual_arrows(mocker):
+    mocker.patch("converter_file.menu._supports_arrow_menu", return_value=True)
+    mocker.patch("converter_file.menu._prompt_with_questionary", side_effect=ImportError)
+    mocker.patch("converter_file.menu._read_key", side_effect=["down", "enter"])
+
+    result = prompt_target_format("audio")
+
+    assert result == "wav"
+
+
+def test_interactive_menu_can_cancel(mocker):
+    mocker.patch("converter_file.menu._supports_arrow_menu", return_value=True)
+    mocker.patch("converter_file.menu._prompt_with_questionary", side_effect=ConversionCancelled)
+
+    with pytest.raises(ConversionCancelled):
+        prompt_target_format("audio")
+
+
+def test_number_menu_can_cancel():
+    with patch("builtins.input", return_value="0"):
+        with pytest.raises(ConversionCancelled):
+            prompt_target_format("audio")
+
+
+def test_manual_arrow_menu_can_cancel(mocker):
+    mocker.patch("converter_file.menu._supports_arrow_menu", return_value=True)
+    mocker.patch("converter_file.menu._prompt_with_questionary", side_effect=ImportError)
+    mocker.patch("converter_file.menu._read_key", side_effect=["up", "enter"])
+
+    with pytest.raises(ConversionCancelled):
+        prompt_target_format("audio")
 
 
 def test_video_menu_accepts_audio_target(capsys):
