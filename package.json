@@ -1,0 +1,14 @@
+{
+  "name": "converter-file-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop app for converter-file.",
+  "main": "electron/main.js",
+  "scripts": {
+    "desktop": "electron .",
+    "desktop:check": "node --check electron/main.js && node --check electron/preload.js && node --check electron/renderer/renderer.js"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0"
+  }
+}

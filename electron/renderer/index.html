@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Converter File</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CF</div>
+          <div>
+            <strong>Converter File</strong>
+            <span>Desktop</span>
+          </div>
+        </div>
+        <nav class="nav">
+          <button class="nav-item active" type="button">Converter</button>
+          <button class="nav-item" type="button" disabled>Fila</button>
+          <button class="nav-item" type="button" disabled>Histórico</button>
+          <button class="nav-item" type="button" disabled>Presets</button>
+          <button class="nav-item" type="button" disabled>Configurações</button>
+        </nav>
+        <section class="dependencies">
+          <button id="dependencyButton" class="dependency-button" type="button" aria-expanded="false">
+            <span><span id="dependencyStatusDot" class="status-dot"></span> Dependências</span>
+            <span id="dependencySummary">Verificando</span>
+          </button>
+          <div id="dependencyPopover" class="dependency-popover hidden" role="dialog" aria-label="Dependências do app">
+            <div class="popover-header">
+              <strong>Dependências</strong>
+              <button id="closeDependencyPopover" class="ghost-button compact-button" type="button">Fechar</button>
+            </div>
+            <div id="dependencyList" class="dependency-list"></div>
+            <button id="updateDependenciesButton" class="primary-button compact-button" type="button">
+              Atualizar dependências
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="toolbar">
+          <div>
+            <h1>Converter</h1>
+            <p>Selecione arquivos, escolha o formato e converta sem usar o terminal.</p>
+          </div>
+          <button id="pickFilesButton" class="primary-button" type="button">Adicionar arquivos</button>
+        </header>
+
+        <section id="dropZone" class="drop-zone">
+          <div>
+            <strong>Solte arquivos aqui</strong>
+            <span>Vídeo, áudio, imagem, PDF e documentos editáveis</span>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <div class="file-list-panel">
+            <div class="panel-header">
+              <h2>Arquivos</h2>
+              <button id="clearFilesButton" class="ghost-button" type="button">Limpar</button>
+            </div>
+            <div id="fileList" class="file-list empty">Nenhum arquivo selecionado.</div>
+          </div>
+
+          <div class="details-panel">
+            <div id="detailsEmpty" class="empty-state">Selecione um arquivo para configurar a conversão.</div>
+            <div id="detailsContent" class="details-content hidden">
+              <div class="panel-header">
+                <div>
+                  <h2 id="selectedFileName"></h2>
+                  <p id="selectedFileMeta"></p>
+                </div>
+              </div>
+
+              <label class="field">
+                <span>Formato de saída</span>
+                <select id="targetFormatSelect"></select>
+              </label>
+
+              <div id="estimateBox" class="estimate-box">Estimativa indisponível.</div>
+
+              <details class="advanced-section">
+                <summary>Opções avançadas</summary>
+                <div id="advancedOptions" class="advanced-options"></div>
+              </details>
+
+              <label class="field">
+                <span>Caminho de saída</span>
+                <input id="outputPathInput" type="text" placeholder="Gerado automaticamente se ficar vazio" />
+              </label>
+
+              <div id="summaryBox" class="summary-box"></div>
+
+              <div class="actions">
+                <button id="validateButton" class="secondary-button" type="button">Validar</button>
+                <button id="convertButton" class="primary-button" type="button">Converter selecionado</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="queue-panel">
+          <div class="panel-header">
+            <h2>Fila desta sessão</h2>
+          </div>
+          <div id="queueList" class="queue-list empty">Nenhuma conversão iniciada.</div>
+        </section>
+      </main>
+    </div>
+
+    <div id="dependencyModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dependencyModalTitle">
+      <div class="modal">
+        <h2 id="dependencyModalTitle">Dependências precisam de atenção</h2>
+        <p id="dependencyModalText">
+          Algumas dependências necessárias para conversões avançadas não foram encontradas.
+        </p>
+        <div class="modal-actions">
+          <button id="dismissDependencyModal" class="secondary-button" type="button">Depois</button>
+          <button id="runDependencyUpdate" class="primary-button" type="button">Atualizar agora</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

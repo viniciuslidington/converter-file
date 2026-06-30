@@ -16,3 +16,9 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Node / Electron
+node_modules/
+out/
+release/
+dist-electron/

@@ -102,3 +102,33 @@ pip install -e .
 pip install -r requirements-dev.txt
 pytest
 ```
+
+### API não interativa
+
+A interface desktop usa uma API JSON para chamar o motor Python sem prompts de
+terminal:
+
+```bash
+echo '{"path": "video.mp4"}' | python3.11 -m converter_file.api inspect
+echo '{"inputPath": "video.mp4", "targetFormat": "mp4"}' | python3.11 -m converter_file.api validate
+```
+
+Com o pacote instalado, o comando também fica disponível como:
+
+```bash
+converter-file-api inspect payload.json
+```
+
+### Desktop Electron
+
+```bash
+npm install
+npm run desktop:check
+npm run desktop
+```
+
+Por padrão, o Electron chama `python3.11`. Para usar outro Python:
+
+```bash
+CONVERTER_FILE_PYTHON=/caminho/para/python npm run desktop
+```
