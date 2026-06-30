@@ -8,7 +8,7 @@ def test_video_extensions():
 
 
 def test_audio_extensions():
-    for ext in ["mp3", "wav", "aac", "flac", "ogg"]:
+    for ext in ["mp3", "wav", "m4a", "aac", "flac", "ogg", "opus"]:
         assert detect_group(f"file.{ext}") == "audio"
 
 
@@ -17,14 +17,23 @@ def test_image_extensions():
         assert detect_group(f"file.{ext}") == "image"
 
 
+def test_pdf_extensions():
+    assert detect_group("file.pdf") == "pdf"
+
+
+def test_document_extensions():
+    for ext in ["docx", "pptx", "xlsx", "odt", "rtf", "txt", "md", "html"]:
+        assert detect_group(f"file.{ext}") == "document"
+
+
 def test_uppercase_extension():
     assert detect_group("file.MP4") == "video"
 
 
 def test_unsupported_raises():
     with pytest.raises(ValueError, match="Formato não suportado"):
-        detect_group("file.docx")
+        detect_group("file.csv")
 
 
 def test_supported_formats_keys():
-    assert set(SUPPORTED_FORMATS.keys()) == {"video", "audio", "image"}
+    assert set(SUPPORTED_FORMATS.keys()) == {"video", "audio", "image", "pdf", "document"}

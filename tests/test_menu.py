@@ -6,7 +6,7 @@ from converter_file.menu import ConversionCancelled, prompt_target_format
 def test_valid_video_choice(capsys):
     with patch("builtins.input", return_value="1"):
         result = prompt_target_format("video")
-    assert result in ["mov", "mp4", "avi", "mkv", "webm", "mp3", "wav", "aac", "flac", "ogg"]
+    assert result in ["mov", "mp4", "avi", "mkv", "webm", "mp3", "wav", "m4a", "aac", "flac", "ogg", "opus"]
 
 
 def test_number_menu_shows_estimated_size(mocker, capsys):
@@ -79,12 +79,12 @@ def test_invalid_choice_reprompts():
     # primeira resposta inválida, segunda válida
     with patch("builtins.input", side_effect=["99", "1"]):
         result = prompt_target_format("audio")
-    assert result in ["mp3", "wav", "aac", "flac", "ogg"]
+    assert result in ["mp3", "wav", "m4a", "aac", "flac", "ogg", "opus"]
 
 
 def test_invalid_group_raises():
     with pytest.raises(ValueError, match="Grupo inválido"):
-        prompt_target_format("document")
+        prompt_target_format("unknown")
 
 
 def test_menu_shows_options(capsys):

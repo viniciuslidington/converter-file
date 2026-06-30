@@ -27,6 +27,16 @@ if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
     Write-Host "v ffmpeg ja instalado"
 }
 
+# pandoc
+if (-not (Get-Command pandoc -ErrorAction SilentlyContinue)) {
+    Write-Host "==> Instalando pandoc..."
+    winget install --id JohnMacFarlane.Pandoc -e --accept-source-agreements --accept-package-agreements
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+                [System.Environment]::GetEnvironmentVariable("Path", "User")
+} else {
+    Write-Host "v pandoc ja instalado"
+}
+
 # Pacote Python
 Write-Host "==> Instalando pacote converter-file..."
 python -m pip install -e $ScriptDir -q
@@ -35,5 +45,7 @@ Write-Host ""
 Write-Host "v Instalacao concluida!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Use o comando:  convert-file"
+Write-Host ""
+Write-Host "  Para recursos avancados de PDF, instale tambem poppler, qpdf e ocrmypdf."
 Write-Host ""
 Write-Host "  Se o comando nao for encontrado, reinicie o terminal."

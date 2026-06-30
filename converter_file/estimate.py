@@ -11,9 +11,11 @@ from converter_file.detect import SUPPORTED_FORMATS
 AUDIO_BITRATES: dict[str, int] = {
     "mp3": 192_000,
     "wav": 1_411_200,
+    "m4a": 192_000,
     "aac": 192_000,
     "flac": 700_000,
     "ogg": 192_000,
+    "opus": 128_000,
 }
 
 VIDEO_BITRATES: dict[str, int] = {

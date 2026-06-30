@@ -5,10 +5,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-from converter_file.detect import detect_group
+from converter_file.audio_options import (
+    AudioAdvancedOptions,
+    DEFAULT_AUDIO_ADVANCED_OPTIONS,
+    confirm_audio_conversion,
+    prompt_audio_advanced_options,
+)
+from converter_file.convert_document import convert_document
+from converter_file.detect import SUPPORTED_FORMATS, detect_group
+from converter_file.document_options import (
+    DEFAULT_DOCUMENT_ADVANCED_OPTIONS,
+    DEFAULT_PDF_ADVANCED_OPTIONS,
+    DocumentAdvancedOptions,
+    PdfAdvancedOptions,
+    confirm_editable_document_conversion,
+    confirm_pdf_conversion,
+    prompt_editable_document_advanced_options,
+    prompt_pdf_advanced_options,
+)
 from converter_file.menu import ConversionCancelled, prompt_target_format
 from converter_file.convert_image import convert_image
 from converter_file.convert_media import convert_media
+from converter_file.video_options import (
+    DEFAULT_VIDEO_ADVANCED_OPTIONS,
+    VideoAdvancedOptions,
+    confirm_video_conversion,
+    prompt_video_advanced_options,
+)
 
 _IS_MACOS = platform.system() == "Darwin"
 
@@ -114,7 +137,15 @@ def _tkinter_save_folder() -> str | None:
 
 # ── Conversion ───────────────────────────────────────────────────────────────
 
-def _convert_single(file_path: str, target_format: str, output_path: str | None = None) -> bool:
+def _convert_single(
+    file_path: str,
+    target_format: str,
+    output_path: str | None = None,
+    audio_options: AudioAdvancedOptions | None = None,
+    video_options: VideoAdvancedOptions | None = None,
+    pdf_options: PdfAdvancedOptions | None = None,
+    document_options: DocumentAdvancedOptions | None = None,
+) -> bool:
     try:
         group = detect_group(file_path)
     except (ValueError, FileNotFoundError, RuntimeError) as e:
@@ -124,11 +155,32 @@ def _convert_single(file_path: str, target_format: str, output_path: str | None 
     try:
         if group == "image":
             output = convert_image(file_path, target_format, output_path)
+        elif group == "audio":
+            output = convert_media(file_path, target_format, output_path, audio_options)
+        elif group == "video":
+            if video_options is None:
+                output = convert_media(file_path, target_format, output_path)
+            else:
+                output = convert_media(
+                    file_path,
+                    target_format,
+                    output_path,
+                    video_options=video_options,
+                )
+        elif group == "pdf":
+            output = convert_document(file_path, target_format, output_path, pdf_options=pdf_options)
+        elif group == "document":
+            output = convert_document(
+                file_path,
+                target_format,
+                output_path,
+                document_options=document_options,
+            )
         else:
             output = convert_media(file_path, target_format, output_path)
         print(f"Convertido: {output}")
         return True
-    except (FileExistsError, FileNotFoundError, RuntimeError) as e:
+    except (FileExistsError, FileNotFoundError, RuntimeError, ValueError) as e:
         print(f"Erro: {e}", file=sys.stderr)
         return False
 
@@ -184,6 +236,10 @@ def main() -> None:
 
         try:
             target_format = prompt_target_format(group, [file])
+            audio_options = _prompt_audio_options_if_needed(group)
+            video_options = _prompt_video_options_if_needed(group, target_format)
+            pdf_options = _prompt_pdf_options_if_needed(group, target_format)
+            document_options = _prompt_document_options_if_needed(group, target_format)
         except ConversionCancelled:
             print("Conversão cancelada.")
             sys.exit(0)
@@ -194,7 +250,24 @@ def main() -> None:
             print("Destino não selecionado.", file=sys.stderr)
             sys.exit(1)
 
-        if not _convert_single(file, target_format, output_path):
+        try:
+            _confirm_audio_conversion_if_needed(group, [file], target_format, audio_options)
+            _confirm_video_conversion_if_needed(group, [file], target_format, video_options)
+            _confirm_pdf_conversion_if_needed(group, [file], target_format, pdf_options)
+            _confirm_document_conversion_if_needed(group, [file], target_format, document_options)
+        except ConversionCancelled:
+            print("Conversão cancelada.")
+            sys.exit(0)
+
+        if not _convert_single(
+            file,
+            target_format,
+            output_path,
+            audio_options,
+            video_options,
+            pdf_options,
+            document_options,
+        ):
             any_error = True
 
     else:
@@ -220,6 +293,10 @@ def main() -> None:
             group = next(iter(valid_groups))
             try:
                 target_format = prompt_target_format(group, files)
+                audio_options = _prompt_audio_options_if_needed(group)
+                video_options = _prompt_video_options_if_needed(group, target_format)
+                pdf_options = _prompt_pdf_options_if_needed(group, target_format)
+                document_options = _prompt_document_options_if_needed(group, target_format)
             except ConversionCancelled:
                 print("Conversão cancelada.")
                 sys.exit(0)
@@ -229,10 +306,132 @@ def main() -> None:
                 print("Destino não selecionado.", file=sys.stderr)
                 sys.exit(1)
 
+            try:
+                _confirm_audio_conversion_if_needed(group, files, target_format, audio_options)
+                _confirm_video_conversion_if_needed(group, files, target_format, video_options)
+                _confirm_pdf_conversion_if_needed(group, files, target_format, pdf_options)
+                _confirm_document_conversion_if_needed(group, files, target_format, document_options)
+            except ConversionCancelled:
+                print("Conversão cancelada.")
+                sys.exit(0)
+
             for f in files:
                 out = str(Path(save_folder) / (Path(f).stem + f".{target_format}"))
-                if not _convert_single(f, target_format, out):
+                if not _convert_single(
+                    f,
+                    target_format,
+                    out,
+                    audio_options,
+                    video_options,
+                    pdf_options,
+                    document_options,
+                ):
                     any_error = True
 
     if any_error:
         sys.exit(1)
+
+
+def _prompt_audio_options_if_needed(group: str) -> AudioAdvancedOptions | None:
+    if group != "audio":
+        return None
+    options = prompt_audio_advanced_options()
+    if options == DEFAULT_AUDIO_ADVANCED_OPTIONS:
+        return None
+    return options
+
+
+def _prompt_video_options_if_needed(
+    group: str,
+    target_format: str,
+) -> VideoAdvancedOptions | None:
+    if group != "video" or target_format not in SUPPORTED_FORMATS["video"]:
+        return None
+    options = prompt_video_advanced_options(target_format)
+    if options == DEFAULT_VIDEO_ADVANCED_OPTIONS:
+        return None
+    return options
+
+
+def _prompt_pdf_options_if_needed(
+    group: str,
+    target_format: str,
+) -> PdfAdvancedOptions | None:
+    if group != "pdf":
+        return None
+    options = prompt_pdf_advanced_options(target_format)
+    if options == DEFAULT_PDF_ADVANCED_OPTIONS:
+        return None
+    return options
+
+
+def _prompt_document_options_if_needed(
+    group: str,
+    target_format: str,
+) -> DocumentAdvancedOptions | None:
+    if group != "document":
+        return None
+    options = prompt_editable_document_advanced_options(target_format)
+    if options == DEFAULT_DOCUMENT_ADVANCED_OPTIONS:
+        return None
+    return options
+
+
+def _confirm_audio_conversion_if_needed(
+    group: str,
+    input_paths: list[str],
+    target_format: str,
+    audio_options: AudioAdvancedOptions | None,
+) -> None:
+    if group != "audio":
+        return
+    confirm_audio_conversion(
+        input_paths,
+        target_format,
+        audio_options or DEFAULT_AUDIO_ADVANCED_OPTIONS,
+    )
+
+
+def _confirm_video_conversion_if_needed(
+    group: str,
+    input_paths: list[str],
+    target_format: str,
+    video_options: VideoAdvancedOptions | None,
+) -> None:
+    if group != "video" or target_format not in SUPPORTED_FORMATS["video"]:
+        return
+    confirm_video_conversion(
+        input_paths,
+        target_format,
+        video_options or DEFAULT_VIDEO_ADVANCED_OPTIONS,
+    )
+
+
+def _confirm_pdf_conversion_if_needed(
+    group: str,
+    input_paths: list[str],
+    target_format: str,
+    pdf_options: PdfAdvancedOptions | None,
+) -> None:
+    if group != "pdf":
+        return
+    confirm_pdf_conversion(
+        input_paths,
+        target_format,
+        pdf_options or DEFAULT_PDF_ADVANCED_OPTIONS,
+    )
+
+
+def _confirm_document_conversion_if_needed(
+    group: str,
+    input_paths: list[str],
+    target_format: str,
+    document_options: DocumentAdvancedOptions | None,
+) -> None:
+    if group != "document":
+        return
+    confirm_editable_document_conversion(
+        input_paths,
+        target_format,
+        document_options or DEFAULT_DOCUMENT_ADVANCED_OPTIONS,
+    )

@@ -1,12 +1,14 @@
 # converter-file
 
-CLI em Python para converter arquivos de vídeo, áudio e imagem para formatos alternativos.
+CLI em Python para converter arquivos de vídeo, áudio, imagem, documentos e PDF para formatos alternativos.
 
 
 ## Requisitos
 
 - Python 3.11+
 - ffmpeg (para conversão de vídeo e áudio)
+- pandoc (para documentos editáveis)
+- poppler, qpdf e ocrmypdf (para fluxos avançados de PDF)
 
 ## Instalação
 
@@ -26,7 +28,9 @@ cd converter-file
 .\install.ps1
 ```
 
-Os scripts instalam automaticamente o Python 3.11, o ffmpeg e o pacote.
+Os scripts instalam automaticamente o Python 3.11, o ffmpeg e o pacote. Para
+conversões de documentos/PDF, instale também as ferramentas externas listadas
+nos requisitos conforme o fluxo que pretende usar.
 
 ## Uso
 
@@ -60,18 +64,36 @@ Fluxo batch:
 2. Seletor de **pasta de destino** nativo — todos os arquivos convertidos são salvos lá
 3. Nomes originais são preservados, apenas a extensão muda
 
-Todos os arquivos do lote devem ser do mesmo tipo (vídeo, áudio ou imagem).
+Todos os arquivos do lote devem ser do mesmo tipo (vídeo, áudio, imagem, PDF ou documento).
 
 ## Formatos suportados
 
 | Tipo   | Formatos                                                |
 | ------ | ------------------------------------------------------- |
 | Vídeo | `.mov` `.mp4` `.avi` `.mkv` `.webm`           |
-| Áudio | `.mp3` `.wav` `.aac` `.flac` `.ogg`           |
+| Áudio | `.mp3` `.wav` `.m4a` `.aac` `.flac` `.ogg` `.opus` |
 | Imagem | `.jpg` `.png` `.webp` `.gif` `.bmp` `.tiff` |
+| PDF | `.pdf` |
+| Documento | `.docx` `.pptx` `.xlsx` `.odt` `.rtf` `.txt` `.md` `.html` |
 
 Ao converter um vídeo, o menu também oferece formatos de áudio (`.mp3`,
-`.wav`, `.aac`, `.flac`, `.ogg`) para extrair somente a trilha sonora.
+`.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.opus`) para extrair somente a trilha sonora.
+
+Ao converter um arquivo de áudio, o terminal pergunta se você quer configurar
+opções avançadas antes de converter: compressão, canais mono/stereo,
+normalização de volume e remoção de metadados. Se você escolher **Não**, o
+comportamento padrão de conversão é preservado.
+
+Ao converter um arquivo de vídeo para outro formato de vídeo, o terminal também
+oferece opções avançadas: resolução, compressão, FPS, remoção de áudio,
+otimização para web em MP4 e remoção de metadados. Se você escolher **Não**, o
+comportamento padrão de conversão é preservado.
+
+Ao converter PDF ou documento editável, o terminal oferece somente opções
+compatíveis com o formato de saída escolhido, como OCR, DPI, senha, compressão,
+qualidade de PDF, layout, texto puro, imagens, encoding, markdown flavor,
+sumário e remoção de metadados. Se você escolher **Não**, o comportamento
+padrão de conversão é preservado.
 
 ## Desenvolvimento
 

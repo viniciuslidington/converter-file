@@ -33,6 +33,34 @@ if [[ "$OS" == "Darwin" ]]; then
         echo "✓ ffmpeg já instalado"
     fi
 
+    if ! command -v pandoc &>/dev/null; then
+        echo "==> Instalando pandoc..."
+        brew install pandoc
+    else
+        echo "✓ pandoc já instalado"
+    fi
+
+    if ! command -v pdftotext &>/dev/null || ! command -v pdftoppm &>/dev/null || ! command -v pdftohtml &>/dev/null; then
+        echo "==> Instalando poppler..."
+        brew install poppler
+    else
+        echo "✓ poppler já instalado"
+    fi
+
+    if ! command -v qpdf &>/dev/null; then
+        echo "==> Instalando qpdf..."
+        brew install qpdf
+    else
+        echo "✓ qpdf já instalado"
+    fi
+
+    if ! command -v ocrmypdf &>/dev/null; then
+        echo "==> Instalando ocrmypdf..."
+        brew install ocrmypdf
+    else
+        echo "✓ ocrmypdf já instalado"
+    fi
+
     PYTHON=python3.11
 
     # PATH no ~/.zshrc
@@ -52,16 +80,16 @@ elif [[ "$OS" == "Linux" ]]; then
     if command -v apt &>/dev/null; then
         echo "==> Instalando dependências (apt)..."
         sudo apt update -qq
-        sudo apt install -y python3.11 python3.11-venv python3-pip python3-tk ffmpeg
+        sudo apt install -y python3.11 python3.11-venv python3-pip python3-tk ffmpeg pandoc poppler-utils qpdf ocrmypdf
     elif command -v dnf &>/dev/null; then
         echo "==> Instalando dependências (dnf)..."
-        sudo dnf install -y python3.11 python3-pip python3-tkinter ffmpeg
+        sudo dnf install -y python3.11 python3-pip python3-tkinter ffmpeg pandoc poppler-utils qpdf ocrmypdf
     elif command -v pacman &>/dev/null; then
         echo "==> Instalando dependências (pacman)..."
-        sudo pacman -S --noconfirm python python-pip tk ffmpeg
+        sudo pacman -S --noconfirm python python-pip tk ffmpeg pandoc poppler qpdf ocrmypdf
     else
         echo "Erro: gerenciador de pacotes não reconhecido."
-        echo "Instale manualmente: python3.11, python3-tk, ffmpeg"
+        echo "Instale manualmente: python3.11, python3-tk, ffmpeg, pandoc, poppler, qpdf, ocrmypdf"
         exit 1
     fi
 
