@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from converter_file.detect import detect_group
@@ -16,11 +17,7 @@ PDF_COMPRESSION_ARGS = {
     "high_quality": ["--stream-data=preserve"],
 }
 
-PDF_QUALITY_ARGS = {
-    "small": ["--pdf-engine-opt=-dPDFSETTINGS=/screen"],
-    "balanced": ["--pdf-engine-opt=-dPDFSETTINGS=/ebook"],
-    "print": ["--pdf-engine-opt=-dPDFSETTINGS=/prepress"],
-}
+PANDOC_PDF_ENGINE = "weasyprint"
 
 MARKDOWN_WRITERS = {
     "github": "gfm",
@@ -52,7 +49,7 @@ def convert_document(
         raise ValueError(f"Grupo não suportado para documentos: {group}")
 
     for warning in warnings:
-        print(f"Aviso: {warning}")
+        print(f"Aviso: {warning}", file=sys.stderr)
 
     if not commands:
         shutil.copyfile(src, dst)
@@ -61,7 +58,7 @@ def convert_document(
     for command in commands:
         result = _run_external_command(command)
         if result.returncode != 0:
-            raise RuntimeError(result.stderr)
+            raise RuntimeError(_format_command_error(result.stderr))
 
     return str(dst)
 
@@ -101,11 +98,27 @@ def _missing_dependency_message(executable: str) -> str:
             "OCRmyPDF não está instalado ou não está no PATH. "
             "Instale com: macOS `brew install ocrmypdf`; Linux `sudo apt install ocrmypdf`."
         ),
+        "weasyprint": (
+            "WeasyPrint não está instalado ou não está no PATH. "
+            "Rode `./install.sh` ou instale o pacote Python com `python3.11 -m pip install -e .`."
+        ),
     }
     return hints.get(
         executable,
         f"Dependência externa não encontrada: {executable}. Instale a ferramenta e tente novamente.",
     )
+
+
+def _format_command_error(stderr: str) -> str:
+    lowered = stderr.lower()
+    if "pdflatex" in lowered and "not found" in lowered:
+        return (
+            "Pandoc tentou usar pdflatex, mas LaTeX não está instalado. "
+            "Atualize as dependências com `./install.sh` para usar WeasyPrint como motor de PDF."
+        )
+    if "weasyprint" in lowered and "not found" in lowered:
+        return _missing_dependency_message("weasyprint")
+    return stderr
 
 
 def build_pdf_commands(
@@ -168,8 +181,11 @@ def build_editable_document_commands(
     command = ["pandoc", str(src), "-o", str(dst)]
     warnings: list[str] = []
 
-    if advanced_enabled and target_format == "pdf":
-        command.extend(PDF_QUALITY_ARGS.get(options.pdf_quality, []))
+    if target_format == "pdf":
+        pdf_engine = shutil.which(PANDOC_PDF_ENGINE) or PANDOC_PDF_ENGINE
+        command.append(f"--pdf-engine={pdf_engine}")
+        if advanced_enabled and options.pdf_quality != "balanced":
+            warnings.append("Qualidade do PDF depende do motor weasyprint; usando configuração padrão.")
 
     if advanced_enabled and target_format == "md":
         command.extend(["-t", MARKDOWN_WRITERS.get(options.markdown_flavor, "gfm")])

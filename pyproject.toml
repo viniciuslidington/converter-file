@@ -6,8 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "converter-file"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["Pillow>=10.0", "questionary>=2.0.0"]
+dependencies = ["Pillow>=10.0", "questionary>=2.0.0", "WeasyPrint>=62.0"]
 
 [project.scripts]
 convert-file = "converter_file.main:main"
 converter-file-api = "converter_file.api:main"
+
+[tool.setuptools.packages.find]
+include = ["converter_file*"]

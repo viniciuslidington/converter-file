@@ -1,12 +1,17 @@
 const api = window.converterFile;
 
 const state = {
+  activeView: "converter",
   files: [],
   selectedId: null,
   queue: [],
+  history: [],
+  presets: [],
+  settings: {},
   dependencies: [],
   dependencyModalShown: false,
   updatingDependencies: false,
+  runningQueue: false,
 };
 
 const groupLabels = {
@@ -18,6 +23,8 @@ const groupLabels = {
 };
 
 const elements = {
+  navItems: document.querySelectorAll(".nav-item[data-view]"),
+  views: document.querySelectorAll(".app-view"),
   pickFilesButton: document.querySelector("#pickFilesButton"),
   clearFilesButton: document.querySelector("#clearFilesButton"),
   dropZone: document.querySelector("#dropZone"),
@@ -32,8 +39,24 @@ const elements = {
   outputPathInput: document.querySelector("#outputPathInput"),
   summaryBox: document.querySelector("#summaryBox"),
   validateButton: document.querySelector("#validateButton"),
+  addToQueueButton: document.querySelector("#addToQueueButton"),
   convertButton: document.querySelector("#convertButton"),
   queueList: document.querySelector("#queueList"),
+  queuePageList: document.querySelector("#queuePageList"),
+  runQueueButton: document.querySelector("#runQueueButton"),
+  clearDoneQueueButton: document.querySelector("#clearDoneQueueButton"),
+  historySearchInput: document.querySelector("#historySearchInput"),
+  historyStatusFilter: document.querySelector("#historyStatusFilter"),
+  historyList: document.querySelector("#historyList"),
+  savePresetButton: document.querySelector("#savePresetButton"),
+  presetList: document.querySelector("#presetList"),
+  defaultOutputDirectoryInput: document.querySelector("#defaultOutputDirectoryInput"),
+  pickOutputDirectoryButton: document.querySelector("#pickOutputDirectoryButton"),
+  overwriteExistingFilesInput: document.querySelector("#overwriteExistingFilesInput"),
+  openOutputAfterConversionInput: document.querySelector("#openOutputAfterConversionInput"),
+  showDependencyWarningsInput: document.querySelector("#showDependencyWarningsInput"),
+  themeSelect: document.querySelector("#themeSelect"),
+  maxConcurrentJobsInput: document.querySelector("#maxConcurrentJobsInput"),
   dependencyButton: document.querySelector("#dependencyButton"),
   dependencySummary: document.querySelector("#dependencySummary"),
   dependencyStatusDot: document.querySelector("#dependencyStatusDot"),
@@ -47,6 +70,9 @@ const elements = {
   runDependencyUpdate: document.querySelector("#runDependencyUpdate"),
 };
 
+for (const navItem of elements.navItems) {
+  navItem.addEventListener("click", () => setActiveView(navItem.dataset.view));
+}
 elements.pickFilesButton.addEventListener("click", pickFiles);
 elements.clearFilesButton.addEventListener("click", clearFiles);
 elements.targetFormatSelect.addEventListener("change", () => {
@@ -56,7 +82,19 @@ elements.targetFormatSelect.addEventListener("change", () => {
 });
 elements.outputPathInput.addEventListener("input", updateSummary);
 elements.validateButton.addEventListener("click", validateSelected);
+elements.addToQueueButton.addEventListener("click", addSelectedToQueue);
 elements.convertButton.addEventListener("click", convertSelected);
+elements.runQueueButton.addEventListener("click", runPendingQueue);
+elements.clearDoneQueueButton.addEventListener("click", clearDoneQueue);
+elements.historySearchInput.addEventListener("input", renderHistory);
+elements.historyStatusFilter.addEventListener("change", renderHistory);
+elements.savePresetButton.addEventListener("click", saveCurrentPreset);
+elements.pickOutputDirectoryButton.addEventListener("click", pickOutputDirectory);
+elements.defaultOutputDirectoryInput.addEventListener("input", () => updateSetting("defaultOutputDirectory", elements.defaultOutputDirectoryInput.value));
+elements.overwriteExistingFilesInput.addEventListener("change", () => updateSetting("overwriteExistingFiles", elements.overwriteExistingFilesInput.checked));
+elements.openOutputAfterConversionInput.addEventListener("change", () => updateSetting("openOutputAfterConversion", elements.openOutputAfterConversionInput.checked));
+elements.showDependencyWarningsInput.addEventListener("change", () => updateSetting("showDependencyWarnings", elements.showDependencyWarningsInput.checked));
+elements.themeSelect.addEventListener("change", () => updateSetting("theme", elements.themeSelect.value));
 elements.dependencyButton.addEventListener("click", toggleDependencyPopover);
 elements.closeDependencyPopover.addEventListener("click", hideDependencyPopover);
 elements.updateDependenciesButton.addEventListener("click", updateDependencies);
@@ -77,7 +115,46 @@ elements.dropZone.addEventListener("drop", async (event) => {
   await addFiles(paths);
 });
 
-checkDependencies();
+initializeApp();
+
+async function initializeApp() {
+  await loadAppData();
+  renderAll();
+  checkDependencies();
+}
+
+async function loadAppData() {
+  const data = await api.loadStore();
+  state.settings = data.settings || {};
+  state.history = data.history || [];
+  state.presets = data.presets || [];
+  state.queue = (data.queue || []).map((job) => normalizeStoredJob(job));
+}
+
+function renderAll() {
+  applyTheme();
+  renderNavigation();
+  renderFiles();
+  renderDetails();
+  renderQueue();
+  renderHistory();
+  renderPresets();
+  renderSettings();
+}
+
+function setActiveView(view) {
+  state.activeView = view;
+  renderNavigation();
+}
+
+function renderNavigation() {
+  for (const navItem of elements.navItems) {
+    navItem.classList.toggle("active", navItem.dataset.view === state.activeView);
+  }
+  for (const view of elements.views) {
+    view.classList.toggle("hidden", view.id !== `${state.activeView}View`);
+  }
+}
 
 async function pickFiles() {
   const paths = await api.pickFiles();
@@ -110,6 +187,7 @@ async function addFiles(paths) {
 
   renderFiles();
   renderDetails();
+  renderPresets();
 }
 
 function clearFiles() {
@@ -117,6 +195,7 @@ function clearFiles() {
   state.selectedId = null;
   renderFiles();
   renderDetails();
+  renderPresets();
 }
 
 function renderFiles() {
@@ -141,9 +220,10 @@ function renderFiles() {
     `;
     button.addEventListener("click", () => {
       state.selectedId = file.id;
-      renderFiles();
-      renderDetails();
-    });
+    renderFiles();
+    renderDetails();
+    renderPresets();
+  });
     elements.fileList.appendChild(button);
   }
 }
@@ -181,6 +261,7 @@ function renderDetails() {
   renderAdvancedOptions();
   updateEstimate();
   updateSummary();
+  renderPresets();
 }
 
 function renderAdvancedOptions() {
@@ -415,7 +496,7 @@ function updateSummary() {
   const file = selectedFile();
   if (!file) return;
   const target = elements.targetFormatSelect.value;
-  const outputPath = elements.outputPathInput.value || `${file.stem}.${target}`;
+  const outputPath = resolveOutputPath(file, target) || `${file.stem}.${target}`;
   elements.summaryBox.innerHTML = `
     <strong>Resumo</strong><br />
     Entrada: ${escapeHtml(file.path)}<br />
@@ -446,24 +527,39 @@ async function convertSelected() {
   const file = selectedFile();
   if (!file) return;
   const payload = buildJobPayload(file);
-  addQueueMessage(file.name, "running", "Convertendo...");
-  const response = await api.convert(payload);
-  if (!response.ok) {
-    addQueueMessage(file.name, "failed", response.error);
-    return;
-  }
-  addQueueMessage(response.result.outputPath, "done", `Concluído · ${formatBytes(response.result.sizeBytes || 0)}`);
+  const queueId = addConversionJob(file, payload, "running");
+  await runQueueJob(queueId);
+}
+
+function addSelectedToQueue() {
+  const file = selectedFile();
+  if (!file) return;
+  const payload = buildJobPayload(file);
+  addConversionJob(file, payload, "pending");
+  setActiveView("queue");
 }
 
 function buildJobPayload(file) {
   const targetFormat = elements.targetFormatSelect.value;
+  const outputPath = resolveOutputPath(file, targetFormat);
   return {
     inputPath: file.path,
     sourceGroup: file.group,
     targetFormat,
-    outputPath: elements.outputPathInput.value || undefined,
+    outputPath,
+    overwriteExistingFiles: Boolean(state.settings.overwriteExistingFiles),
     options: file.options || {},
   };
+}
+
+function resolveOutputPath(file, targetFormat) {
+  if (elements.outputPathInput.value) {
+    return elements.outputPathInput.value;
+  }
+  if (state.settings.defaultOutputDirectory) {
+    return `${state.settings.defaultOutputDirectory}/${file.stem}.${targetFormat}`;
+  }
+  return undefined;
 }
 
 async function checkDependencies() {
@@ -472,7 +568,7 @@ async function checkDependencies() {
   renderDependencies();
 
   const missing = dependencies.filter((dependency) => !dependency.installed);
-  if (missing.length > 0 && !state.dependencyModalShown) {
+  if (missing.length > 0 && state.settings.showDependencyWarnings !== false && !state.dependencyModalShown) {
     state.dependencyModalShown = true;
     showDependencyModal(missing);
   }
@@ -556,31 +652,463 @@ async function updateDependencies() {
   await checkDependencies();
 }
 
-function addQueueMessage(name, status, message) {
-  state.queue.unshift({ id: crypto.randomUUID(), name, status, message });
+function addQueueMessage(name, status, message, progress = null) {
+  const id = crypto.randomUUID();
+  state.queue.unshift({
+    id,
+    kind: "message",
+    name,
+    status,
+    message,
+    progress,
+    createdAt: new Date().toISOString(),
+  });
+  renderQueue();
+  return id;
+}
+
+function updateQueueMessage(id, status, message, progress = null, name = null) {
+  const item = state.queue.find((entry) => entry.id === id);
+  if (!item) return;
+  item.status = status;
+  item.message = message;
+  item.progress = progress;
+  if (name !== null) {
+    item.name = name;
+  }
   renderQueue();
 }
 
-function renderQueue() {
-  if (state.queue.length === 0) {
-    elements.queueList.className = "queue-list empty";
-    elements.queueList.textContent = "Nenhuma conversão iniciada.";
+function addConversionJob(file, payload, status = "pending") {
+  const id = crypto.randomUUID();
+  const job = {
+    id,
+    kind: "conversion",
+    name: file.name,
+    inputPath: file.path,
+    outputPath: payload.outputPath || "",
+    sourceGroup: file.group,
+    targetFormat: payload.targetFormat,
+    options: structuredClone(payload.options || {}),
+    payload,
+    status,
+    progress: status === "running" ? 0 : null,
+    message: status === "running" ? "Iniciando conversão..." : "Aguardando na fila.",
+    createdAt: new Date().toISOString(),
+    startedAt: status === "running" ? new Date().toISOString() : "",
+    finishedAt: "",
+    error: "",
+    sizeBytes: null,
+  };
+  state.queue.unshift(job);
+  persistQueue();
+  renderQueue();
+  return id;
+}
+
+async function runPendingQueue() {
+  if (state.runningQueue) return;
+  state.runningQueue = true;
+  renderQueue();
+  try {
+    const pending = [...state.queue]
+      .reverse()
+      .filter((job) => job.kind === "conversion" && job.status === "pending");
+    for (const job of pending) {
+      await runQueueJob(job.id);
+    }
+  } finally {
+    state.runningQueue = false;
+    renderQueue();
+  }
+}
+
+async function runQueueJob(id) {
+  const job = state.queue.find((entry) => entry.id === id);
+  if (!job || job.kind !== "conversion") return;
+
+  job.status = "running";
+  job.progress = 0;
+  job.message = "Iniciando conversão...";
+  job.startedAt = new Date().toISOString();
+  job.error = "";
+  persistQueue();
+  renderQueue();
+
+  const response = await api.convertWithProgress(job.payload, (progress) => {
+    updateQueueMessage(
+      id,
+      "running",
+      progress.message || "Convertendo...",
+      Number(progress.percent || 0)
+    );
+    persistQueue();
+  }, id);
+
+  if (response.cancelled) {
+    job.status = "cancelled";
+    job.progress = null;
+    job.message = "Conversão cancelada.";
+    job.error = "";
+    job.finishedAt = new Date().toISOString();
+    await persistFinishedJob(job);
+    renderQueue();
     return;
   }
-  elements.queueList.className = "queue-list";
-  elements.queueList.innerHTML = "";
-  for (const item of state.queue) {
+
+  if (!response.ok) {
+    job.status = "failed";
+    job.progress = null;
+    job.message = response.error || "Falha na conversão.";
+    job.error = job.message;
+    job.finishedAt = new Date().toISOString();
+    await persistFinishedJob(job);
+    renderQueue();
+    return;
+  }
+
+  job.status = "done";
+  job.progress = 100;
+  job.outputPath = response.result.outputPath;
+  job.sizeBytes = response.result.sizeBytes || null;
+  job.message = `Concluído · ${formatBytes(response.result.sizeBytes || 0)}`;
+  job.finishedAt = new Date().toISOString();
+  await persistFinishedJob(job);
+  renderQueue();
+
+  if (state.settings.openOutputAfterConversion && job.outputPath) {
+    api.showItemInFolder(job.outputPath);
+  }
+}
+
+async function persistFinishedJob(job) {
+  persistQueue();
+  const entry = {
+    id: crypto.randomUUID(),
+    jobId: job.id,
+    inputPath: job.inputPath,
+    outputPath: job.outputPath,
+    sourceGroup: job.sourceGroup,
+    targetFormat: job.targetFormat,
+    status: job.status,
+    sizeBytes: job.sizeBytes,
+    error: job.error,
+    createdAt: job.createdAt,
+    finishedAt: job.finishedAt,
+    options: job.options,
+  };
+  state.history = await api.addHistory(entry);
+  renderHistory();
+}
+
+function clearDoneQueue() {
+  state.queue = state.queue.filter((job) => !["done", "failed", "cancelled"].includes(job.status));
+  persistQueue();
+  renderQueue();
+}
+
+function persistQueue() {
+  api.saveQueue(state.queue.filter((job) => job.kind === "conversion"));
+}
+
+function renderQueue() {
+  renderQueueInto(elements.queueList, state.queue, "Nenhuma conversão iniciada.");
+  renderQueueInto(
+    elements.queuePageList,
+    state.queue.filter((job) => job.kind === "conversion"),
+    "Nenhum job na fila."
+  );
+  elements.runQueueButton.disabled = state.runningQueue || !state.queue.some((job) => job.kind === "conversion" && job.status === "pending");
+}
+
+function renderQueueInto(container, items, emptyMessage) {
+  if (!container) return;
+  if (items.length === 0) {
+    container.className = "queue-list empty";
+    container.textContent = emptyMessage;
+    return;
+  }
+  container.className = "queue-list";
+  container.innerHTML = "";
+  for (const item of items) {
     const row = document.createElement("div");
     row.className = "queue-row";
     row.innerHTML = `
       <div>
         <div class="file-name">${escapeHtml(item.name)}</div>
         <div class="queue-meta">${escapeHtml(item.message)}</div>
+        ${item.progress === null || item.progress === undefined ? "" : progressMarkup(item.progress)}
       </div>
-      <span class="queue-status ${item.status}">${statusLabel(item.status)}</span>
+      <div class="row-actions">
+        ${queueActionsMarkup(item)}
+        <span class="queue-status ${item.status}">${statusLabel(item.status)}</span>
+      </div>
     `;
-    elements.queueList.appendChild(row);
+    const removeButton = row.querySelector("[data-action='remove-job']");
+    if (removeButton) {
+      removeButton.addEventListener("click", () => removeQueueJob(item.id));
+    }
+    const retryButton = row.querySelector("[data-action='retry-job']");
+    if (retryButton) {
+      retryButton.addEventListener("click", () => retryQueueJob(item.id));
+    }
+    const cancelButton = row.querySelector("[data-action='cancel-job']");
+    if (cancelButton) {
+      cancelButton.addEventListener("click", () => cancelQueueJob(item.id));
+    }
+    container.appendChild(row);
   }
+}
+
+function queueActionsMarkup(item) {
+  if (item.kind !== "conversion") return "";
+  const canRemove = ["pending", "done", "failed", "cancelled"].includes(item.status);
+  const canRetry = ["done", "failed", "cancelled"].includes(item.status);
+  const canCancel = item.status === "running";
+  return `
+    ${canCancel ? "<button class=\"ghost-button compact-button\" type=\"button\" data-action=\"cancel-job\">Cancelar</button>" : ""}
+    ${canRetry ? "<button class=\"ghost-button compact-button\" type=\"button\" data-action=\"retry-job\">Repetir</button>" : ""}
+    ${canRemove ? "<button class=\"ghost-button compact-button\" type=\"button\" data-action=\"remove-job\">Remover</button>" : ""}
+  `;
+}
+
+function removeQueueJob(id) {
+  state.queue = state.queue.filter((job) => job.id !== id);
+  persistQueue();
+  renderQueue();
+}
+
+function retryQueueJob(id) {
+  const job = state.queue.find((entry) => entry.id === id);
+  if (!job) return;
+  job.status = "pending";
+  job.progress = null;
+  job.message = "Aguardando na fila.";
+  job.error = "";
+  job.startedAt = "";
+  job.finishedAt = "";
+  persistQueue();
+  renderQueue();
+}
+
+async function cancelQueueJob(id) {
+  const job = state.queue.find((entry) => entry.id === id);
+  if (!job || job.status !== "running") return;
+  job.message = "Cancelando conversão...";
+  renderQueue();
+  await api.cancelConversion(id);
+}
+
+function renderHistory() {
+  const query = (elements.historySearchInput.value || "").toLowerCase().trim();
+  const statusFilter = elements.historyStatusFilter.value || "all";
+  const entries = state.history.filter((entry) => {
+    if (statusFilter !== "all" && entry.status !== statusFilter) {
+      return false;
+    }
+    if (!query) return true;
+    return [
+      entry.inputPath,
+      entry.outputPath,
+      entry.sourceGroup,
+      entry.targetFormat,
+      entry.status,
+      entry.error,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+
+  if (entries.length === 0) {
+    elements.historyList.className = "queue-list empty";
+    elements.historyList.textContent = state.history.length === 0 ? "Nenhum histórico salvo." : "Nenhum resultado encontrado.";
+    return;
+  }
+
+  elements.historyList.className = "queue-list";
+  elements.historyList.innerHTML = "";
+  for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = "queue-row";
+    row.innerHTML = `
+      <div>
+        <div class="file-name">${escapeHtml(entry.outputPath || entry.inputPath)}</div>
+        <div class="queue-meta">${escapeHtml(historyMeta(entry))}</div>
+      </div>
+      <div class="row-actions">
+        ${entry.outputPath ? "<button class=\"ghost-button compact-button\" type=\"button\" data-action=\"show-output\">Finder</button>" : ""}
+        <button class="ghost-button compact-button" type="button" data-action="repeat-history">Repetir</button>
+        <span class="queue-status ${entry.status}">${statusLabel(entry.status)}</span>
+      </div>
+    `;
+    const showButton = row.querySelector("[data-action='show-output']");
+    if (showButton) {
+      showButton.addEventListener("click", () => api.showItemInFolder(entry.outputPath));
+    }
+    row.querySelector("[data-action='repeat-history']").addEventListener("click", () => enqueueHistoryEntry(entry));
+    elements.historyList.appendChild(row);
+  }
+}
+
+function historyMeta(entry) {
+  const finishedAt = entry.finishedAt ? new Date(entry.finishedAt).toLocaleString("pt-BR") : "sem data";
+  const size = entry.sizeBytes ? ` · ${formatBytes(entry.sizeBytes)}` : "";
+  const error = entry.error ? ` · ${entry.error}` : "";
+  return `${entry.sourceGroup} para .${entry.targetFormat} · ${finishedAt}${size}${error}`;
+}
+
+function enqueueHistoryEntry(entry) {
+  const id = crypto.randomUUID();
+  state.queue.unshift({
+    id,
+    kind: "conversion",
+    name: fileNameFromPath(entry.inputPath),
+    inputPath: entry.inputPath,
+    outputPath: "",
+    sourceGroup: entry.sourceGroup,
+    targetFormat: entry.targetFormat,
+    options: structuredClone(entry.options || {}),
+    payload: {
+      inputPath: entry.inputPath,
+      sourceGroup: entry.sourceGroup,
+      targetFormat: entry.targetFormat,
+      options: structuredClone(entry.options || {}),
+    },
+    status: "pending",
+    progress: null,
+    message: "Aguardando na fila.",
+    createdAt: new Date().toISOString(),
+    startedAt: "",
+    finishedAt: "",
+    error: "",
+    sizeBytes: null,
+  });
+  persistQueue();
+  renderQueue();
+  setActiveView("queue");
+}
+
+async function saveCurrentPreset() {
+  const file = selectedFile();
+  if (!file) {
+    addQueueMessage("Presets", "failed", "Selecione um arquivo antes de salvar um preset.");
+    return;
+  }
+  const name = window.prompt("Nome do preset", `${groupLabels[file.group] || file.group} para .${elements.targetFormatSelect.value}`);
+  if (!name) return;
+  const now = new Date().toISOString();
+  const preset = {
+    id: crypto.randomUUID(),
+    name,
+    sourceGroup: file.group,
+    targetFormat: elements.targetFormatSelect.value,
+    options: structuredClone(file.options || {}),
+    createdAt: now,
+    updatedAt: now,
+  };
+  state.presets = await api.addPreset(preset);
+  renderPresets();
+}
+
+function renderPresets() {
+  if (state.presets.length === 0) {
+    elements.presetList.className = "queue-list empty";
+    elements.presetList.textContent = "Nenhum preset salvo.";
+    return;
+  }
+
+  elements.presetList.className = "queue-list";
+  elements.presetList.innerHTML = "";
+  const file = selectedFile();
+  for (const preset of state.presets) {
+    const compatible = !file || preset.sourceGroup === file.group;
+    const row = document.createElement("div");
+    row.className = `queue-row ${compatible ? "" : "muted-row"}`;
+    row.innerHTML = `
+      <div>
+        <div class="file-name">${escapeHtml(preset.name)}</div>
+        <div class="queue-meta">${groupLabels[preset.sourceGroup] || preset.sourceGroup} para .${preset.targetFormat}</div>
+      </div>
+      <div class="row-actions">
+        <button class="ghost-button compact-button" type="button" data-action="apply-preset" ${compatible ? "" : "disabled"}>Aplicar</button>
+        <button class="ghost-button compact-button" type="button" data-action="rename-preset">Renomear</button>
+        <button class="ghost-button compact-button" type="button" data-action="delete-preset">Excluir</button>
+      </div>
+    `;
+    row.querySelector("[data-action='apply-preset']").addEventListener("click", () => applyPreset(preset));
+    row.querySelector("[data-action='rename-preset']").addEventListener("click", () => renamePreset(preset));
+    row.querySelector("[data-action='delete-preset']").addEventListener("click", () => deletePreset(preset.id));
+    elements.presetList.appendChild(row);
+  }
+}
+
+async function renamePreset(preset) {
+  const name = window.prompt("Novo nome do preset", preset.name);
+  if (!name || name === preset.name) return;
+  state.presets = await api.updatePreset(preset.id, { name });
+  renderPresets();
+}
+
+async function deletePreset(id) {
+  state.presets = await api.deletePreset(id);
+  renderPresets();
+}
+
+function applyPreset(preset) {
+  const file = selectedFile();
+  if (!file || file.group !== preset.sourceGroup || !file.targetFormats.includes(preset.targetFormat)) {
+    addQueueMessage("Presets", "failed", "Preset incompatível com o arquivo selecionado.");
+    return;
+  }
+  file.targetFormat = preset.targetFormat;
+  file.options = structuredClone(preset.options || {});
+  setActiveView("converter");
+  renderDetails();
+}
+
+function renderSettings() {
+  elements.defaultOutputDirectoryInput.value = state.settings.defaultOutputDirectory || "";
+  elements.overwriteExistingFilesInput.checked = Boolean(state.settings.overwriteExistingFiles);
+  elements.openOutputAfterConversionInput.checked = Boolean(state.settings.openOutputAfterConversion);
+  elements.showDependencyWarningsInput.checked = state.settings.showDependencyWarnings !== false;
+  elements.themeSelect.value = state.settings.theme || "system";
+}
+
+async function updateSetting(key, value) {
+  state.settings = await api.updateSettings({ [key]: value });
+  applyTheme();
+  renderSettings();
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = state.settings.theme || "system";
+}
+
+async function pickOutputDirectory() {
+  const folder = await api.pickFolder();
+  if (!folder) return;
+  await updateSetting("defaultOutputDirectory", folder);
+}
+
+function normalizeStoredJob(job) {
+  return {
+    ...job,
+    kind: "conversion",
+    status: job.status === "running" ? "pending" : (job.status || "pending"),
+    progress: job.status === "running" ? null : job.progress,
+    message: job.status === "running" ? "Aguardando na fila." : (job.message || "Aguardando na fila."),
+  };
+}
+
+function fileNameFromPath(filePath) {
+  return String(filePath || "").split(/[\\/]/).pop() || filePath;
+}
+
+function progressMarkup(progress) {
+  const percent = Math.max(0, Math.min(100, Number(progress) || 0));
+  return `
+    <div class="progress-track" aria-label="Progresso da conversão" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" role="progressbar">
+      <div class="progress-fill" style="width: ${percent}%"></div>
+    </div>
+  `;
 }
 
 function selectedFile() {
@@ -593,9 +1121,11 @@ function isVideoTarget(format) {
 
 function statusLabel(status) {
   return {
+    pending: "Pendente",
     running: "Rodando",
     done: "OK",
     failed: "Erro",
+    cancelled: "Cancelado",
   }[status] || status;
 }
 

@@ -17,11 +17,11 @@
           </div>
         </div>
         <nav class="nav">
-          <button class="nav-item active" type="button">Converter</button>
-          <button class="nav-item" type="button" disabled>Fila</button>
-          <button class="nav-item" type="button" disabled>Histórico</button>
-          <button class="nav-item" type="button" disabled>Presets</button>
-          <button class="nav-item" type="button" disabled>Configurações</button>
+          <button class="nav-item active" type="button" data-view="converter">Converter</button>
+          <button class="nav-item" type="button" data-view="queue">Fila</button>
+          <button class="nav-item" type="button" data-view="history">Histórico</button>
+          <button class="nav-item" type="button" data-view="presets">Presets</button>
+          <button class="nav-item" type="button" data-view="settings">Configurações</button>
         </nav>
         <section class="dependencies">
           <button id="dependencyButton" class="dependency-button" type="button" aria-expanded="false">
@@ -42,6 +42,7 @@
       </aside>
 
       <main class="workspace">
+        <section id="converterView" class="app-view">
         <header class="toolbar">
           <div>
             <h1>Converter</h1>
@@ -97,6 +98,7 @@
 
               <div class="actions">
                 <button id="validateButton" class="secondary-button" type="button">Validar</button>
+                <button id="addToQueueButton" class="secondary-button" type="button">Adicionar à fila</button>
                 <button id="convertButton" class="primary-button" type="button">Converter selecionado</button>
               </div>
             </div>
@@ -108,6 +110,119 @@
             <h2>Fila desta sessão</h2>
           </div>
           <div id="queueList" class="queue-list empty">Nenhuma conversão iniciada.</div>
+        </section>
+        </section>
+
+        <section id="queueView" class="app-view hidden">
+          <header class="toolbar">
+            <div>
+              <h1>Fila</h1>
+              <p>Acompanhe conversões pendentes, em andamento e concluídas.</p>
+            </div>
+            <div class="toolbar-actions">
+              <button id="runQueueButton" class="primary-button" type="button">Rodar fila</button>
+              <button id="clearDoneQueueButton" class="secondary-button" type="button">Limpar concluídos</button>
+            </div>
+          </header>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Jobs</h2>
+            </div>
+            <div id="queuePageList" class="queue-list empty">Nenhum job na fila.</div>
+          </section>
+        </section>
+
+        <section id="historyView" class="app-view hidden">
+          <header class="toolbar">
+            <div>
+              <h1>Histórico</h1>
+              <p>Consulte conversões anteriores, abra saídas e repita trabalhos.</p>
+            </div>
+            <div class="toolbar-actions filter-actions">
+              <label class="search-field">
+                <span>Buscar</span>
+                <input id="historySearchInput" type="search" placeholder="Arquivo ou formato" />
+              </label>
+              <label class="search-field compact-field">
+                <span>Status</span>
+                <select id="historyStatusFilter">
+                  <option value="all">Todos</option>
+                  <option value="done">Concluído</option>
+                  <option value="failed">Erro</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </label>
+            </div>
+          </header>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Conversões recentes</h2>
+            </div>
+            <div id="historyList" class="queue-list empty">Nenhum histórico salvo.</div>
+          </section>
+        </section>
+
+        <section id="presetsView" class="app-view hidden">
+          <header class="toolbar">
+            <div>
+              <h1>Presets</h1>
+              <p>Salve combinações de formato e opções para reutilizar rapidamente.</p>
+            </div>
+            <button id="savePresetButton" class="primary-button" type="button">Salvar preset atual</button>
+          </header>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Presets salvos</h2>
+            </div>
+            <div id="presetList" class="queue-list empty">Nenhum preset salvo.</div>
+          </section>
+        </section>
+
+        <section id="settingsView" class="app-view hidden">
+          <header class="toolbar">
+            <div>
+              <h1>Configurações</h1>
+              <p>Ajuste comportamento global da aplicação.</p>
+            </div>
+          </header>
+          <section class="panel settings-panel">
+            <div class="panel-header">
+              <h2>Preferências</h2>
+            </div>
+            <div class="settings-list">
+              <label class="field">
+                <span>Pasta padrão de saída</span>
+                <div class="inline-field">
+                  <input id="defaultOutputDirectoryInput" type="text" placeholder="Usar pasta do arquivo original" />
+                  <button id="pickOutputDirectoryButton" class="secondary-button" type="button">Escolher</button>
+                </div>
+              </label>
+              <label class="toggle-row">
+                <span>Sobrescrever arquivos existentes</span>
+                <input id="overwriteExistingFilesInput" type="checkbox" />
+              </label>
+              <label class="toggle-row">
+                <span>Abrir saída após converter</span>
+                <input id="openOutputAfterConversionInput" type="checkbox" />
+              </label>
+              <label class="toggle-row">
+                <span>Mostrar avisos de dependências</span>
+                <input id="showDependencyWarningsInput" type="checkbox" />
+              </label>
+              <label class="field">
+                <span>Tema</span>
+                <select id="themeSelect">
+                  <option value="system">Sistema</option>
+                  <option value="light">Claro</option>
+                  <option value="dark">Escuro</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Conversões simultâneas</span>
+                <input id="maxConcurrentJobsInput" type="number" value="1" min="1" max="1" disabled />
+              </label>
+            </div>
+          </section>
         </section>
       </main>
     </div>

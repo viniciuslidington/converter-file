@@ -70,6 +70,45 @@ def test_convert_job_for_image(mocker, tmp_path):
     assert result["outputPath"] == str(out)
 
 
+def test_convert_job_can_overwrite_existing_output(mocker, tmp_path):
+    src = tmp_path / "photo.png"
+    src.touch()
+    out = tmp_path / "photo.jpg"
+    out.write_bytes(b"old")
+    mock_convert = mocker.patch("converter_file.api.convert_image", return_value=str(out))
+
+    api.convert_job({
+        "inputPath": str(src),
+        "targetFormat": "jpg",
+        "outputPath": str(out),
+        "overwriteExistingFiles": True,
+    })
+
+    assert not out.exists()
+    mock_convert.assert_called_once_with(str(src), "jpg", str(out))
+
+
+def test_convert_job_emits_progress_events(mocker, tmp_path):
+    src = tmp_path / "photo.png"
+    src.touch()
+    out = tmp_path / "photo.jpg"
+    out.write_bytes(b"jpg")
+    mocker.patch("converter_file.api.convert_image", return_value=str(out))
+    events = []
+
+    api.convert_job(
+        {
+            "inputPath": str(src),
+            "targetFormat": "jpg",
+            "outputPath": str(out),
+        },
+        progress_callback=lambda percent, message: events.append((percent, message)),
+    )
+
+    assert events[0][0] == 5
+    assert events[-1] == (100, "Conversão concluída.")
+
+
 def test_convert_job_maps_audio_options(mocker, tmp_path):
     src = tmp_path / "song.wav"
     src.touch()

@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from converter_file.audio_options import AudioAdvancedOptions
 from converter_file.convert_document import convert_document
@@ -76,19 +76,27 @@ def validate_job(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def convert_job(payload: dict[str, Any]) -> dict[str, Any]:
+def convert_job(
+    payload: dict[str, Any],
+    progress_callback: Callable[[int, str], None] | None = None,
+) -> dict[str, Any]:
     input_path = _required_str(payload, "inputPath")
     target_format = _required_str(payload, "targetFormat")
     output_path = payload.get("outputPath")
     group = detect_group(input_path)
 
+    _emit_progress(progress_callback, 5, "Validando conversão...")
     validation = validate_job(payload)
     if not validation["valid"]:
         raise ValueError("; ".join(validation["errors"]))
 
+    _emit_progress(progress_callback, 10, "Preparando conversão...")
+    if output_path and payload.get("overwriteExistingFiles") and Path(output_path).exists():
+        Path(output_path).unlink()
     options = payload.get("options") or {}
 
     if group == "image":
+        _emit_progress(progress_callback, 35, "Convertendo imagem...")
         output = convert_image(input_path, target_format, output_path)
     elif group in {"audio", "video"}:
         output = convert_media(
@@ -97,8 +105,10 @@ def convert_job(payload: dict[str, Any]) -> dict[str, Any]:
             output_path,
             audio_options=_audio_options_from_payload(options.get("audio")),
             video_options=_video_options_from_payload(options.get("video")),
+            progress_callback=progress_callback,
         )
     elif group == "pdf":
+        _emit_progress(progress_callback, 35, "Convertendo documento...")
         output = convert_document(
             input_path,
             target_format,
@@ -106,6 +116,7 @@ def convert_job(payload: dict[str, Any]) -> dict[str, Any]:
             pdf_options=_pdf_options_from_payload(options.get("pdf")),
         )
     elif group == "document":
+        _emit_progress(progress_callback, 35, "Convertendo documento...")
         output = convert_document(
             input_path,
             target_format,
@@ -115,6 +126,7 @@ def convert_job(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         raise ValueError(f"Grupo não suportado: {group}")
 
+    _emit_progress(progress_callback, 100, "Conversão concluída.")
     return {
         "ok": True,
         "inputPath": input_path,
@@ -146,11 +158,15 @@ def main() -> None:
     )
     parser.add_argument("command", choices=["inspect", "targets", "estimate", "validate", "convert"])
     parser.add_argument("json_file", nargs="?", help="Arquivo JSON de entrada. Se omitido, lê stdin.")
+    parser.add_argument("--progress", action="store_true", help="Emite eventos de progresso em stderr.")
     args = parser.parse_args()
 
     try:
         payload = _read_payload(args.json_file)
-        result = dispatch(args.command, payload)
+        if args.command == "convert" and args.progress:
+            result = convert_job(payload, progress_callback=_write_progress_event)
+        else:
+            result = dispatch(args.command, payload)
         _write_json({"ok": True, "result": result})
     except Exception as e:
         _write_json({"ok": False, "error": str(e)})
@@ -172,6 +188,20 @@ def _read_payload(json_file: str | None) -> dict[str, Any]:
 
 def _write_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False))
+
+
+def _write_progress_event(percent: int, message: str) -> None:
+    payload = {"percent": max(0, min(100, percent)), "message": message}
+    print(f"__PROGRESS__{json.dumps(payload, ensure_ascii=False)}", file=sys.stderr, flush=True)
+
+
+def _emit_progress(
+    progress_callback: Callable[[int, str], None] | None,
+    percent: int,
+    message: str,
+) -> None:
+    if progress_callback is not None:
+        progress_callback(percent, message)
 
 
 def _required_str(payload: dict[str, Any], key: str) -> str:

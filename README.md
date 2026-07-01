@@ -8,6 +8,7 @@ CLI em Python para converter arquivos de vídeo, áudio, imagem, documentos e PD
 - Python 3.11+
 - ffmpeg (para conversão de vídeo e áudio)
 - pandoc (para documentos editáveis)
+- WeasyPrint (motor de PDF usado pelo Pandoc)
 - poppler, qpdf e ocrmypdf (para fluxos avançados de PDF)
 
 ## Instalação
@@ -124,6 +125,7 @@ converter-file-api inspect payload.json
 ```bash
 npm install
 npm run desktop:check
+npm run desktop:test
 npm run desktop
 ```
 
@@ -132,3 +134,10 @@ Por padrão, o Electron chama `python3.11`. Para usar outro Python:
 ```bash
 CONVERTER_FILE_PYTHON=/caminho/para/python npm run desktop
 ```
+
+O app desktop inclui:
+
+- Fila persistente com progresso, repetição, remoção e cancelamento de conversões
+- Histórico persistente com busca, filtro por status e repetição de conversões
+- Presets por tipo de arquivo/formato, com aplicação somente quando compatível
+- Configurações globais como pasta padrão de saída, sobrescrita, tema e avisos de dependências

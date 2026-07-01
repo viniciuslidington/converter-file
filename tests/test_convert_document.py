@@ -97,20 +97,21 @@ def test_pdf_ocr_builds_ocrmypdf_command(tmp_path):
     assert commands == [["ocrmypdf", "-l", "por", str(src), str(dst)]]
 
 
-def test_editable_document_to_pdf_applies_quality_and_toc(tmp_path):
+def test_editable_document_to_pdf_applies_quality_and_toc(tmp_path, mocker):
     src = tmp_path / "report.docx"
     dst = tmp_path / "report.pdf"
     options = DocumentAdvancedOptions(pdf_quality="print", generate_toc=True)
+    mocker.patch("converter_file.convert_document.shutil.which", return_value=None)
 
     commands, warnings = build_editable_document_commands(src, dst, "pdf", options)
 
-    assert warnings == []
+    assert warnings == ["Qualidade do PDF depende do motor weasyprint; usando configuração padrão."]
     assert commands == [[
         "pandoc",
         str(src),
         "-o",
         str(dst),
-        "--pdf-engine-opt=-dPDFSETTINGS=/prepress",
+        "--pdf-engine=weasyprint",
         "--toc",
     ]]
 
@@ -154,9 +155,10 @@ def test_convert_document_runs_command(tmp_path, mocker):
     dst = tmp_path / "report.pdf"
     src.touch()
     mock_run = mocker.patch("subprocess.run", return_value=MagicMock(returncode=0, stderr=""))
+    mocker.patch("converter_file.convert_document.shutil.which", return_value=None)
 
     assert convert_document(str(src), "pdf", str(dst), document_options=DocumentAdvancedOptions()) == str(dst)
-    assert mock_run.call_args[0][0][:4] == ["pandoc", str(src), "-o", str(dst)]
+    assert mock_run.call_args[0][0][:5] == ["pandoc", str(src), "-o", str(dst), "--pdf-engine=weasyprint"]
 
 
 def test_convert_document_reports_missing_pandoc(tmp_path, mocker):
