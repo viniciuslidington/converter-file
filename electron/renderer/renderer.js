@@ -774,11 +774,25 @@ async function runQueueJob(id) {
   job.message = `Concluído · ${formatBytes(response.result.sizeBytes || 0)}`;
   job.finishedAt = new Date().toISOString();
   await persistFinishedJob(job);
+  removeConvertedFile(job.inputPath);
   renderQueue();
 
   if (state.settings.openOutputAfterConversion && job.outputPath) {
     api.showItemInFolder(job.outputPath);
   }
+}
+
+function removeConvertedFile(inputPath) {
+  const removedFile = state.files.find((file) => file.path === inputPath);
+  if (!removedFile) return;
+
+  state.files = state.files.filter((file) => file.path !== inputPath);
+  if (state.selectedId === removedFile.id) {
+    state.selectedId = state.files[0]?.id || null;
+  }
+  renderFiles();
+  renderDetails();
+  renderPresets();
 }
 
 async function persistFinishedJob(job) {

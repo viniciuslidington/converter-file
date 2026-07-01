@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
-const { randomUUID } = require("node:crypto");
+
+function createJobId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `job-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 contextBridge.exposeInMainWorld("converterFile", {
   pickFiles: () => ipcRenderer.invoke("files:pick"),
@@ -10,7 +16,7 @@ contextBridge.exposeInMainWorld("converterFile", {
   validate: (payload) => ipcRenderer.invoke("api:validate", payload),
   convert: (payload) => ipcRenderer.invoke("api:convert", payload),
   convertWithProgress: (payload, onProgress, providedJobId) => {
-    const jobId = providedJobId || randomUUID();
+    const jobId = providedJobId || createJobId();
     const channel = `conversion:progress:${jobId}`;
     const listener = (_event, progress) => {
       if (typeof onProgress === "function") {

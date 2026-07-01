@@ -8,6 +8,7 @@ const {
   updateStore,
   writeStore,
 } = require("./storage");
+const { pickFiles, pickFolder } = require("./dialogs");
 
 const projectRoot = path.join(__dirname, "..");
 const pythonExecutable = process.env.CONVERTER_FILE_PYTHON || "python3.11";
@@ -62,20 +63,9 @@ app.on("window-all-closed", () => {
 });
 
 function registerIpcHandlers() {
-  ipcMain.handle("files:pick", async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ["openFile", "multiSelections"],
-      title: "Escolha arquivo(s) para converter",
-    });
-    return result.canceled ? [] : result.filePaths;
-  });
-  ipcMain.handle("folders:pick", async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ["openDirectory"],
-      title: "Escolha a pasta padrão de saída",
-    });
-    return result.canceled ? "" : result.filePaths[0];
-  });
+  const dialogDeps = { app, BrowserWindow, dialog };
+  ipcMain.handle("files:pick", (event) => pickFiles(dialogDeps, event));
+  ipcMain.handle("folders:pick", (event) => pickFolder(dialogDeps, event));
 
   ipcMain.handle("api:inspect", (_event, payload) => runApi("inspect", payload));
   ipcMain.handle("api:targets", (_event, payload) => runApi("targets", payload));
